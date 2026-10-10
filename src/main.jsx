@@ -11,11 +11,11 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <ToastProvider>
-        <AppDataProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <AppDataProvider>
             <App />
-          </AuthProvider>
-        </AppDataProvider>
+          </AppDataProvider>
+        </AuthProvider>
       </ToastProvider>
     </BrowserRouter>
   </StrictMode>,

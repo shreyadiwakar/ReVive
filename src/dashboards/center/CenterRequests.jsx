@@ -1,5 +1,6 @@
 import { Inbox } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import EmptyState from '../../components/EmptyState'
 import Modal from '../../components/Modal'
 import StatusBadge from '../../components/StatusBadge'
@@ -9,14 +10,16 @@ import { useToast } from '../../context/ToastContext'
 import { centerConfirmReceived, resolveCenterIdForUser } from '../../services/dataService'
 import { PICKUP_STATUS } from '../../utils/constants'
 import { formatDate, formatKg } from '../../utils/format'
+import { backendEnabled } from '../../services/backendApi'
 
 export default function CenterRequests() {
   const { user } = useAuth()
-  const { db, refresh } = useAppData()
+  const { db, refresh, loading, error } = useAppData()
   const toast = useToast()
   const centerId = resolveCenterIdForUser(user.id)
   const [confirmTarget, setConfirmTarget] = useState(null)
   const [weight, setWeight] = useState('')
+  const [busy, setBusy] = useState(false)
 
   const requests = db.pickups
     .filter((p) => p.centerId === centerId)
@@ -28,22 +31,28 @@ export default function CenterRequests() {
     setWeight(String(p.quantityKg))
   }
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!weight || Number(weight) <= 0) {
       toast.error('Enter a valid received weight.')
       return
     }
-    const result = centerConfirmReceived(confirmTarget.id, user.id, weight)
-    if (!result.ok) toast.error(result.error)
-    else toast.success('Received quantity recorded. Ready for verification.')
-    setConfirmTarget(null)
-    refresh()
+    setBusy(true)
+    try {
+      const result = centerConfirmReceived(confirmTarget.id, user.id, weight)
+      if (!result.ok) throw new Error(result.error)
+      toast.success('Received quantity recorded. Ready for verification.')
+      setConfirmTarget(null)
+      await refresh()
+    } catch (reason) { toast.error(reason.message || 'Could not record received quantity.') }
+    finally { setBusy(false) }
   }
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-charcoal">Incoming requests</h1>
       <p className="mt-1 text-charcoal/60">Track pickups en route and confirm received quantity on arrival.</p>
+      {backendEnabled && loading && <p className="mt-3 text-sm text-charcoal/60">Loading center requests…</p>}
+      {backendEnabled && error && <p role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">{error}</p>}
 
       {requests.length === 0 ? (
         <div className="mt-6">
@@ -71,7 +80,9 @@ export default function CenterRequests() {
                   <td className="px-5 py-3 text-charcoal/70">{formatDate(p.scheduledAt)}</td>
                   <td className="px-5 py-3"><StatusBadge status={p.status} /></td>
                   <td className="px-5 py-3">
-                    {p.status === PICKUP_STATUS.DELIVERED && p.verifiedWeightKg == null ? (
+                    {backendEnabled && p.status === PICKUP_STATUS.DELIVERED ? (
+                      <Link to="/center/verification" className="rounded-lg bg-forest px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest-dark">Verify recycling</Link>
+                    ) : p.status === PICKUP_STATUS.DELIVERED && p.verifiedWeightKg == null ? (
                       <button type="button" onClick={() => openConfirm(p)} className="rounded-lg bg-forest px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest-dark">
                         Confirm received
                       </button>
@@ -105,7 +116,7 @@ export default function CenterRequests() {
                 className="w-full rounded-xl border border-emerald-200 px-3.5 py-2.5 text-sm focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
               />
             </div>
-            <button type="button" onClick={handleConfirm} className="w-full rounded-xl bg-forest px-4 py-2.5 text-sm font-semibold text-white hover:bg-forest-dark transition">
+            <button type="button" disabled={busy} onClick={handleConfirm} className="w-full rounded-xl bg-forest px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60 hover:bg-forest-dark transition">
               Confirm quantity
             </button>
           </div>

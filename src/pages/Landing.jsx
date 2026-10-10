@@ -15,7 +15,8 @@ import {
 import { Link } from 'react-router-dom'
 import Footer from '../components/Footer'
 import Navbar from '../components/Navbar'
-import { getCenters, getCoupons } from '../services/dataService'
+import { getCoupons } from '../services/dataService'
+import { useAppData } from '../context/AppDataContext'
 
 const STEPS = [
   { icon: Recycle, title: 'Schedule a pickup', text: 'Pick a waste category, quantity, and a time that works for you.' },
@@ -50,7 +51,8 @@ const STATS = [
 ]
 
 export default function Landing() {
-  const centers = getCenters().filter((c) => c.available).slice(0, 3)
+  const { db } = useAppData()
+  const centers = db.centers.filter((c) => c.available).slice(0, 3)
   const coupons = getCoupons().slice(0, 4)
 
   return (

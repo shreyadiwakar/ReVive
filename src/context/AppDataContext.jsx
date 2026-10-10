@@ -1,24 +1,41 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { getDb, subscribe } from '../services/dataService'
+import { useAuth } from './AuthContext'
+import { backendEnabled, loadBackendSnapshot } from '../services/backendApi'
 
 const AppDataContext = createContext(null)
 
 export function AppDataProvider({ children }) {
   const [tick, setTick] = useState(0)
+  const { session } = useAuth()
+  const [db, setDb] = useState(() => {
+    const localDb = getDb()
+    return backendEnabled
+      ? { ...localDb, pickups: [], centers: [], rewardTransactions: [], rewardsBalance: 0 }
+      : localDb
+  })
+  const [loading, setLoading] = useState(backendEnabled)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     return subscribe(() => setTick((t) => t + 1))
   }, [])
 
-  const db = useMemo(() => {
-    void tick
-    return getDb()
-  }, [tick])
+  useEffect(() => {
+    let active = true
+    if (!backendEnabled) { setDb(getDb()); setLoading(false); setError(''); return undefined }
+    setLoading(true)
+    loadBackendSnapshot(getDb(), session)
+      .then((snapshot) => { if (active) { setDb(snapshot); setError('') } })
+      .catch((reason) => { if (active) setError(reason.message || 'Could not load backend data.') })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [tick, session])
 
-  const refresh = () => setTick((t) => t + 1)
+  const refresh = useCallback(() => setTick((t) => t + 1), [])
 
   return (
-    <AppDataContext.Provider value={{ db, refresh }}>{children}</AppDataContext.Provider>
+    <AppDataContext.Provider value={{ db, refresh, loading, error, backendEnabled }}>{children}</AppDataContext.Provider>
   )
 }
 

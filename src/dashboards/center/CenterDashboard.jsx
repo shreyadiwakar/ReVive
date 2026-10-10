@@ -9,10 +9,11 @@ import { useAuth } from '../../context/AuthContext'
 import { getCenterInventory, resolveCenterIdForUser } from '../../services/dataService'
 import { PICKUP_STATUS } from '../../utils/constants'
 import { formatDate, formatKg } from '../../utils/format'
+import { backendEnabled } from '../../services/backendApi'
 
 export default function CenterDashboard() {
   const { user } = useAuth()
-  const { db } = useAppData()
+  const { db, loading, error } = useAppData()
   const centerId = resolveCenterIdForUser(user.id)
 
   const centerPickups = db.pickups.filter((p) => p.centerId === centerId)
@@ -22,13 +23,22 @@ export default function CenterDashboard() {
   const today = new Date().toDateString()
   const receivedToday = centerPickups.filter((p) => p.verifiedWeightKg != null && new Date(p.scheduledAt).toDateString() === today)
   const awaitingVerification = centerPickups.filter((p) => p.status === PICKUP_STATUS.DELIVERED && p.verifiedWeightKg != null)
-  const { totalKg, totals } = getCenterInventory(centerId)
+  const inventory = backendEnabled
+    ? (() => {
+      const records = centerPickups.filter((p) => p.status === PICKUP_STATUS.VERIFIED)
+      const totals = records.reduce((acc, p) => ({ ...acc, [p.wasteCategory]: (acc[p.wasteCategory] || 0) + Number(p.verifiedWeightKg || 0) }), {})
+      return { totalKg: records.reduce((sum, p) => sum + Number(p.verifiedWeightKg || 0), 0), totals: Object.entries(totals).map(([category, kg]) => ({ category, kg })) }
+    })()
+    : getCenterInventory(centerId)
+  const { totalKg, totals } = inventory
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-charcoal">Center overview</h1>
         <p className="mt-1 text-charcoal/60">Monitor inbound material and the verification queue.</p>
+        {backendEnabled && loading && <p className="mt-2 text-sm text-charcoal/60">Loading center activity…</p>}
+        {backendEnabled && error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

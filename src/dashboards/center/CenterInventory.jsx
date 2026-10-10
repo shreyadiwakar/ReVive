@@ -6,17 +6,25 @@ import { useAppData } from '../../context/AppDataContext'
 import { useAuth } from '../../context/AuthContext'
 import { getCenterInventory, resolveCenterIdForUser } from '../../services/dataService'
 import { formatDateTime, formatKg } from '../../utils/format'
+import { backendEnabled } from '../../services/backendApi'
+import { PICKUP_STATUS } from '../../utils/constants'
 
 export default function CenterInventory() {
   const { user } = useAuth()
-  useAppData()
+  const { db, loading, error } = useAppData()
   const centerId = resolveCenterIdForUser(user.id)
-  const { records, totals, totalKg } = getCenterInventory(centerId)
+  const remoteRecords = db.pickups.filter((p) => p.centerId === centerId && p.status === PICKUP_STATUS.VERIFIED)
+  const inventory = backendEnabled
+    ? { records: remoteRecords, totals: Object.entries(remoteRecords.reduce((acc, p) => ({ ...acc, [p.wasteCategory]: (acc[p.wasteCategory] || 0) + Number(p.verifiedWeightKg || 0) }), {})).map(([category, kg]) => ({ category, kg })), totalKg: remoteRecords.reduce((sum, p) => sum + Number(p.verifiedWeightKg || 0), 0) }
+    : getCenterInventory(centerId)
+  const { records, totals, totalKg } = inventory
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-charcoal">Inventory</h1>
       <p className="mt-1 text-charcoal/60">Historical record of verified, processed material.</p>
+      {backendEnabled && loading && <p className="mt-2 text-sm text-charcoal/60">Loading inventory…</p>}
+      {backendEnabled && error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <StatCard label="Total processed" value={formatKg(totalKg)} icon={Archive} />

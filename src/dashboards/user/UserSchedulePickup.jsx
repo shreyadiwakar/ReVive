@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import { calculateEstimatedPoints, createPickupRequest, getCentersForCategory } from '../../services/dataService'
+import { useAppData } from '../../context/AppDataContext'
+import { backendEnabled, createBackendPickup } from '../../services/backendApi'
 import { WASTE_CATEGORIES } from '../../utils/constants'
 
 const STEPS = ['Waste details', 'Pickup info', 'Choose center', 'Review']
@@ -12,7 +14,9 @@ export default function UserSchedulePickup() {
   const { user } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
+  const { db, refresh, loading, error: dataError } = useAppData()
   const [step, setStep] = useState(0)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [confirmed, setConfirmed] = useState(null)
 
@@ -28,7 +32,9 @@ export default function UserSchedulePickup() {
 
   const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
 
-  const matchingCenters = getCentersForCategory(form.wasteCategory)
+  const matchingCenters = backendEnabled
+    ? db.centers.filter((center) => center.available && center.acceptedCategories?.includes(form.wasteCategory))
+    : getCentersForCategory(form.wasteCategory)
   const selectedCenter = matchingCenters.find((c) => c.id === form.centerId) || matchingCenters[0]
   const estimatedPoints = calculateEstimatedPoints(form.wasteCategory, Number(form.quantityKg || 0))
 
@@ -57,24 +63,25 @@ export default function UserSchedulePickup() {
 
   const handleBack = () => setStep((s) => Math.max(s - 1, 0))
 
-  const handleSubmit = () => {
-    const scheduledAt = new Date(`${form.date}T${form.time}`).toISOString()
-    const result = createPickupRequest({
-      userId: user.id,
-      wasteCategory: form.wasteCategory,
-      quantityKg: form.quantityKg,
-      pickupAddress: form.pickupAddress,
-      scheduledAt,
-      instructions: form.instructions,
-      centerId: selectedCenter.id,
-      centerName: selectedCenter.name,
-    })
-    if (!result.ok) {
-      toast.error(result.error)
-      return
-    }
-    toast.success('Pickup request created!')
-    setConfirmed(result.pickup)
+  const handleSubmit = async () => {
+    setSaving(true)
+    try {
+      const scheduledAt = new Date(`${form.date}T${form.time}`).toISOString()
+      const payload = { userId: user.id, wasteCategory: form.wasteCategory, quantityKg: form.quantityKg,
+        pickupAddress: form.pickupAddress, scheduledAt, instructions: form.instructions,
+        centerId: selectedCenter.id, centerName: selectedCenter.name, residentName: user.name }
+      if (backendEnabled) {
+        const pickup = await createBackendPickup(payload)
+        setConfirmed(pickup)
+        await refresh()
+      } else {
+        const result = createPickupRequest(payload)
+        if (!result.ok) throw new Error(result.error)
+        setConfirmed(result.pickup)
+      }
+      toast.success('Pickup request created!')
+    } catch (reason) { toast.error(reason.message || 'Could not create pickup request.') }
+    finally { setSaving(false) }
   }
 
   if (confirmed) {
@@ -130,6 +137,8 @@ export default function UserSchedulePickup() {
       </ol>
 
       <div className="mt-6 rounded-2xl bg-white p-6 shadow-sm border border-emerald-100">
+        {backendEnabled && dataError && <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">{dataError}</div>}
+        {backendEnabled && loading && <p className="mb-4 text-sm text-charcoal/60">Loading recycling centers…</p>}
         {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">{error}</div>}
 
         {step === 0 && (
@@ -245,8 +254,8 @@ export default function UserSchedulePickup() {
               Continue
             </button>
           ) : (
-            <button type="button" onClick={handleSubmit} className="rounded-xl bg-forest px-5 py-2.5 text-sm font-semibold text-white hover:bg-forest-dark transition">
-              Confirm pickup request
+            <button type="button" disabled={saving || (backendEnabled && loading)} onClick={handleSubmit} className="rounded-xl bg-forest px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60 hover:bg-forest-dark transition">
+              {saving ? 'Submitting…' : 'Confirm pickup request'}
             </button>
           )}
         </div>

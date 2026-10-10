@@ -6,10 +6,11 @@ import { useAppData } from '../../context/AppDataContext'
 import { useAuth } from '../../context/AuthContext'
 import { DELIVERY_RATE_PER_KG, PICKUP_STATUS } from '../../utils/constants'
 import { formatCurrency, formatDate, formatKg } from '../../utils/format'
+import { backendEnabled } from '../../services/backendApi'
 
 export default function DeliveryEarnings() {
   const { user } = useAuth()
-  const { db } = useAppData()
+  const { db, loading, error } = useAppData()
 
   const completed = db.pickups
     .filter((p) => p.deliveryPartnerId === user.id && [PICKUP_STATUS.DELIVERED, PICKUP_STATUS.VERIFIED].includes(p.status))
@@ -21,6 +22,8 @@ export default function DeliveryEarnings() {
     <div>
       <h1 className="text-2xl font-bold text-charcoal">Earnings</h1>
       <p className="mt-1 text-charcoal/60">Estimated earnings based on completed deliveries.</p>
+      {backendEnabled && loading && <p className="mt-2 text-sm text-charcoal/50">Loading completed deliveries…</p>}
+      {backendEnabled && error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
 
       <div className="mt-4 max-w-sm">
         <SimulatedBanner compact />

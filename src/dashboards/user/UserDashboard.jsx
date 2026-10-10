@@ -13,7 +13,7 @@ import { formatDate, formatKg } from '../../utils/format'
 
 export default function UserDashboard() {
   const { user } = useAuth()
-  const { db } = useAppData()
+  const { db, loading, error, backendEnabled } = useAppData()
 
   const pickups = db.pickups.filter((p) => p.userId === user.id)
   const verified = pickups.filter((p) => p.status === PICKUP_STATUS.VERIFIED)
@@ -22,7 +22,22 @@ export default function UserDashboard() {
     .filter((p) => ![PICKUP_STATUS.VERIFIED, PICKUP_STATUS.CANCELLED].includes(p.status))
     .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt))[0]
   const recent = [...pickups].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5)
-  const weekly = getWeeklyActivity(user.id)
+  const weekly = backendEnabled
+    ? (() => {
+      const days = []
+      for (let i = 6; i >= 0; i -= 1) {
+        const date = new Date()
+        date.setDate(date.getDate() - i)
+        days.push({ key: date.toDateString(), day: date.toLocaleDateString(undefined, { weekday: 'short' }), kg: 0 })
+      }
+      pickups.filter((p) => [PICKUP_STATUS.VERIFIED, PICKUP_STATUS.DELIVERED, PICKUP_STATUS.COLLECTED].includes(p.status)).forEach((p) => {
+        const bucket = days.find((item) => item.key === new Date(p.scheduledAt || p.createdAt).toDateString())
+        if (bucket) bucket.kg += Number(p.verifiedWeightKg ?? p.quantityKg)
+      })
+      return days.map(({ day, kg }) => ({ day, kg: Math.round(kg * 10) / 10 }))
+    })()
+    : getWeeklyActivity(user.id)
+  const points = backendEnabled ? (db.rewardsBalance ?? 0) : (user?.points ?? 0)
 
   return (
     <div className="space-y-6">
@@ -30,6 +45,8 @@ export default function UserDashboard() {
         <div>
           <h1 className="text-2xl font-bold text-charcoal">Hello, {user?.name?.split(' ')[0] || 'there'} 👋</h1>
           <p className="mt-1 text-charcoal/60">Here's your recycling impact at a glance.</p>
+          {backendEnabled && loading && <p className="mt-2 text-sm text-charcoal/50">Loading your backend data…</p>}
+          {backendEnabled && error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
         </div>
         <Link
           to="/user/schedule-pickup"
@@ -41,7 +58,7 @@ export default function UserDashboard() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total waste recycled" value={formatKg(totalKg)} icon={Recycle} />
-        <StatCard label="Points earned" value={(user?.points ?? 0).toLocaleString()} icon={Star} tone="amber" />
+        <StatCard label="Points earned" value={points.toLocaleString()} icon={Star} tone="amber" />
         <StatCard label="Completed pickups" value={verified.length} icon={ListChecks} />
         <StatCard
           label="Environmental impact"
@@ -53,7 +70,7 @@ export default function UserDashboard() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-2xl bg-white p-5 shadow-sm border border-emerald-100/70 lg:col-span-1">
-          <PointsGauge points={user?.points ?? 0} />
+          <PointsGauge points={points} />
           <Link
             to="/user/rewards"
             className="mt-4 flex w-full items-center justify-center rounded-xl bg-forest px-4 py-2.5 text-sm font-semibold text-white hover:bg-forest-dark transition"

@@ -1,0 +1,72 @@
+import { loadSession } from './storage'
+
+const apiBase = import.meta.env.VITE_API_BASE_URL || ''
+export const backendEnabled = import.meta.env.VITE_API_MODE === 'local' && !!apiBase
+
+function headers() {
+  const session = loadSession()
+  const role = session?.role === 'delivery' ? 'delivery' : session?.role === 'center' ? 'center' : 'resident'
+  const result = { 'x-local-role': role }
+  if (session?.userId && role !== 'center') result['x-local-user'] = session.userId
+  return result
+}
+
+export async function apiRequest(path, { method = 'GET', body } = {}) {
+  const response = await fetch(`${apiBase.replace(/\/$/, '')}${path}`, {
+    method,
+    headers: { ...headers(), ...(body ? { 'content-type': 'application/json' } : {}) },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  })
+  let data = {}
+  try { data = await response.json() } catch { /* response can be empty */ }
+  if (!response.ok) throw new Error(data.error || `Request failed (${response.status}).`)
+  return data
+}
+
+export function normalizePickup(pickup, session = loadSession()) {
+  if (!pickup) return pickup
+  return {
+    ...pickup,
+    userId: pickup.residentId ?? pickup.userId,
+    userName: pickup.residentName ?? (pickup.residentId === session?.userId ? session?.name : null) ?? 'Resident',
+    deliveryPartnerId: pickup.deliveryPartnerId ? (session?.role === 'delivery' ? session.userId : pickup.deliveryPartnerId) : null,
+    deliveryPartnerName: pickup.deliveryPartnerId ? (session?.role === 'delivery' ? session.name : 'Assigned delivery partner') : null,
+    timeline: pickup.timeline || [],
+  }
+}
+
+export async function loadBackendSnapshot(currentDb, session) {
+  const centersData = await apiRequest('/centers')
+  const centers = centersData.items || []
+  if (!session?.userId || session.role === 'admin') return { ...currentDb, centers }
+
+  if (session.role === 'user') {
+    const [pickupsData, rewardsData] = await Promise.all([apiRequest('/pickups'), apiRequest('/rewards')])
+    return {
+      ...currentDb,
+      centers,
+      pickups: (pickupsData.items || []).map((item) => normalizePickup(item, session)),
+      rewardsBalance: Number(rewardsData.balance || 0),
+      rewardTransactions: (rewardsData.transactions || []).map((item) => ({
+        ...item, userId: item.residentId, createdAt: item.createdAt,
+      })),
+    }
+  }
+  if (session.role === 'delivery') {
+    const [available, mine] = await Promise.all([apiRequest('/pickups/available'), apiRequest('/pickups/mine')])
+    const pickups = [...(mine.items || []), ...(available.items || [])]
+    return { ...currentDb, centers, pickups: [...new Map(pickups.map((p) => [p.id, normalizePickup(p, session)])).values()] }
+  }
+  if (session.role === 'center') {
+    const data = await apiRequest('/center/pickups')
+    return { ...currentDb, centers, pickups: (data.items || []).map((item) => normalizePickup(item, session)) }
+  }
+  return { ...currentDb, centers }
+}
+
+export const createBackendPickup = async (payload) => normalizePickup((await apiRequest('/pickups', { method: 'POST', body: payload })).pickup)
+export const getBackendPickup = async (id) => normalizePickup((await apiRequest(`/pickups/${encodeURIComponent(id)}`)).pickup)
+export const cancelBackendPickup = (id) => apiRequest(`/pickups/${encodeURIComponent(id)}/cancel`, { method: 'POST' })
+export const acceptBackendPickup = (id) => apiRequest(`/pickups/${encodeURIComponent(id)}/accept`, { method: 'POST' })
+export const updateBackendPickup = (id, status) => apiRequest(`/pickups/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: { status } })
+export const verifyBackendPickup = (id, verifiedWeightKg, note) => apiRequest(`/pickups/${encodeURIComponent(id)}/verify`, { method: 'POST', body: { verifiedWeightKg: Number(verifiedWeightKg), note } })

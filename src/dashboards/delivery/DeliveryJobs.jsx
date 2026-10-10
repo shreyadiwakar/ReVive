@@ -8,6 +8,7 @@ import { useAppData } from '../../context/AppDataContext'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import { acceptPickupJob } from '../../services/dataService'
+import { acceptBackendPickup, backendEnabled } from '../../services/backendApi'
 import { PICKUP_STATUS } from '../../utils/constants'
 import { formatDate, formatKg } from '../../utils/format'
 
@@ -16,18 +17,24 @@ export default function DeliveryJobs() {
   const { db, refresh } = useAppData()
   const toast = useToast()
   const [acceptTarget, setAcceptTarget] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const { loading, error } = useAppData()
 
   const available = db.pickups.filter((p) => p.status === PICKUP_STATUS.REQUESTED && !p.deliveryPartnerId)
   const myActive = db.pickups
     .filter((p) => p.deliveryPartnerId === user.id && ![PICKUP_STATUS.VERIFIED, PICKUP_STATUS.CANCELLED].includes(p.status))
     .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt))
 
-  const handleAccept = () => {
-    const result = acceptPickupJob(acceptTarget.id, user.id)
-    if (!result.ok) toast.error(result.error)
-    else toast.success('Job accepted!')
-    setAcceptTarget(null)
-    refresh()
+  const handleAccept = async () => {
+    setBusy(true)
+    try {
+      if (backendEnabled) await acceptBackendPickup(acceptTarget.id)
+      else { const result = acceptPickupJob(acceptTarget.id, user.id); if (!result.ok) throw new Error(result.error) }
+      toast.success('Job accepted!')
+      setAcceptTarget(null)
+      await refresh()
+    } catch (reason) { toast.error(reason.message || 'Could not accept job.') }
+    finally { setBusy(false) }
   }
 
   return (
@@ -35,6 +42,8 @@ export default function DeliveryJobs() {
       <div>
         <h1 className="text-2xl font-bold text-charcoal">Jobs</h1>
         <p className="mt-1 text-charcoal/60">Accept nearby pickup requests and manage your active deliveries.</p>
+        {backendEnabled && loading && <p className="mt-3 text-sm text-charcoal/60">Loading delivery jobs…</p>}
+        {backendEnabled && error && <p role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">{error}</p>}
       </div>
 
       <section>
@@ -85,6 +94,7 @@ export default function DeliveryJobs() {
                   <button
                     type="button"
                     onClick={() => setAcceptTarget(p)}
+                    disabled={busy}
                     className="rounded-lg bg-forest px-4 py-2 text-sm font-semibold text-white hover:bg-forest-dark transition"
                   >
                     Accept
@@ -100,7 +110,8 @@ export default function DeliveryJobs() {
         open={!!acceptTarget}
         title="Accept this job?"
         message={`You'll be responsible for collecting ${acceptTarget?.wasteCategory} (${acceptTarget?.quantityKg} kg) and delivering it to ${acceptTarget?.centerName}.`}
-        confirmLabel="Accept job"
+        confirmLabel={busy ? 'Accepting…' : 'Accept job'}
+        busy={busy}
         onConfirm={handleAccept}
         onCancel={() => setAcceptTarget(null)}
       />

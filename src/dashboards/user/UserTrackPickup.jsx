@@ -1,5 +1,5 @@
 import { ArrowLeft } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import PickupTimeline from '../../components/PickupTimeline'
@@ -8,6 +8,7 @@ import { useAppData } from '../../context/AppDataContext'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import { cancelPickup } from '../../services/dataService'
+import { backendEnabled, cancelBackendPickup, getBackendPickup } from '../../services/backendApi'
 import { CANCELLABLE_STATUSES } from '../../utils/constants'
 import { formatDate, formatKg } from '../../utils/format'
 
@@ -18,13 +19,29 @@ export default function UserTrackPickup() {
   const toast = useToast()
   const navigate = useNavigate()
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [remotePickup, setRemotePickup] = useState(null)
+  const [loading, setLoading] = useState(backendEnabled)
+  const [loadError, setLoadError] = useState('')
+  const [busy, setBusy] = useState(false)
 
-  const pickup = db.pickups.find((p) => p.id === id && p.userId === user.id)
+  useEffect(() => {
+    if (!backendEnabled) return
+    let active = true
+    setLoading(true)
+    getBackendPickup(id).then((item) => { if (active) setRemotePickup(item) })
+      .catch((reason) => { if (active) setLoadError(reason.message) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [id, db.pickups.length])
+
+  const pickup = backendEnabled ? remotePickup : db.pickups.find((p) => p.id === id && p.userId === user.id)
+
+  if (loading) return <p className="text-sm text-charcoal/60">Loading pickup…</p>
 
   if (!pickup) {
     return (
       <div className="mx-auto max-w-lg text-center">
-        <p className="text-charcoal/60">Pickup not found.</p>
+        <p role={loadError ? 'alert' : undefined} className={loadError ? 'text-red-700' : 'text-charcoal/60'}>{loadError || 'Pickup not found.'}</p>
         <Link to="/user/my-pickups" className="mt-3 inline-block text-sm font-semibold text-forest hover:underline">
           ← Back to my pickups
         </Link>
@@ -32,12 +49,16 @@ export default function UserTrackPickup() {
     )
   }
 
-  const handleCancel = () => {
-    const result = cancelPickup(pickup.id, user.id)
-    if (!result.ok) toast.error(result.error)
-    else toast.success('Pickup cancelled.')
-    setConfirmCancel(false)
-    refresh()
+  const handleCancel = async () => {
+    setBusy(true)
+    try {
+      if (backendEnabled) { await cancelBackendPickup(pickup.id); setRemotePickup(await getBackendPickup(pickup.id)) }
+      else { const result = cancelPickup(pickup.id, user.id); if (!result.ok) throw new Error(result.error) }
+      toast.success('Pickup cancelled.')
+      setConfirmCancel(false)
+      refresh()
+    } catch (reason) { toast.error(reason.message || 'Could not cancel pickup.') }
+    finally { setBusy(false) }
   }
 
   return (
@@ -88,7 +109,8 @@ export default function UserTrackPickup() {
         open={confirmCancel}
         title="Cancel this pickup?"
         message="This request will be cancelled and cannot be resumed."
-        confirmLabel="Cancel pickup"
+        confirmLabel={busy ? 'Cancelling…' : 'Cancel pickup'}
+        busy={busy}
         danger
         onConfirm={handleCancel}
         onCancel={() => setConfirmCancel(false)}

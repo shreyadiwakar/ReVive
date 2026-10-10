@@ -5,10 +5,11 @@ recycling centers, and platform admins around a simple loop: schedule a
 pickup, have it collected and delivered, get it verified by a recycling
 center, and earn reward points for responsible recycling.
 
-**This is a frontend-only prototype.** There is no backend, database, or real
-payment/auth system — everything is simulated with mock data and persisted
-to your browser's `localStorage`. A yellow "Demo mode" banner appears
-throughout the app as a reminder that none of this is production-secure.
+The frontend supports both its original localStorage demo mode and an opt-in
+local API mode. Local API mode connects pickup, center, delivery, and earned
+reward data to the DynamoDB Local backend. Login, registration, coupon
+redemption, and unsupported admin functions remain on the existing demo flow.
+The local API uses mock role headers and is only for local development.
 
 ## Tech stack
 
@@ -17,8 +18,8 @@ throughout the app as a reminder that none of this is production-secure.
 - React Router v7
 - Lucide React icons
 - Recharts for dashboard charts
-- `localStorage` for all persistence, behind a service layer designed to be
-  swapped for real API calls later
+- DynamoDB Local via the serverless TypeScript API for supported local flows
+- `localStorage` for the existing demo auth and unsupported prototype features
 
 ## Getting started
 
@@ -30,6 +31,34 @@ npm run dev
 Open the printed local URL (typically `http://localhost:5173`). To build for
 production: `npm run build` (output in `dist/`, already wired for AWS
 Amplify Hosting via `amplify.yml`).
+
+## Run the frontend with the local backend
+
+Copy `.env.example` to `.env.local` (PowerShell: `Copy-Item .env.example .env.local`).
+Then start DynamoDB Local and the API in one terminal:
+
+```powershell
+cd backend
+docker compose up -d
+npm run local:db:init
+npm run local:api
+```
+
+If port 3001 is already in use, start the API on 3002 with
+`$env:PORT='3002'; npm run local:api` and set
+`VITE_API_BASE_URL=http://127.0.0.1:3002` in `.env.local`.
+
+In a second terminal, from the project root, run `npm install` if needed and
+`npm run dev`. The demo sign-in stays in place; use `user@revive.demo`,
+`delivery@revive.demo`, or `center@revive.demo` with password `demo123` to
+exercise the connected role dashboards. Schedule a pickup as the resident,
+accept and advance it as the delivery partner, then verify it as the center.
+The resident's rewards balance and ledger update after verification. Coupon
+redemption and admin data are not backed by the local API yet.
+
+The backend end-to-end check is `cd backend; npm run local:smoke` while the API
+is running. It verifies pickup creation through reward credit and prevents a
+duplicate award.
 
 ## Demo credentials
 
@@ -124,3 +153,18 @@ persistence, so it can be swapped out without touching any UI code:
   document uploads currently shown as placeholders during registration.
 
 No AWS services are connected today — this app runs entirely client-side.
+
+## Backend design
+
+The backend starter uses AWS Lambda, API Gateway, Cognito, and DynamoDB. See
+[`docs/api-contract.md`](docs/api-contract.md) for the first endpoints and
+[`docs/dynamodb-design.md`](docs/dynamodb-design.md) for the access patterns.
+The PostgreSQL schema at `docs/database-schema.sql` is retained as a reference
+from the earlier design and is not used by the current backend.
+
+## Backend starter
+
+The separate [`backend/`](backend/README.md) directory contains the TypeScript
+Lambda, Cognito, and DynamoDB starter and local DynamoDB setup. See its README
+for local run steps.
+The frontend remains a standalone Vite app.

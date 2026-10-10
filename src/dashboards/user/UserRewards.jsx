@@ -8,19 +8,21 @@ import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import { redeemCoupon } from '../../services/dataService'
 import { formatDateTime } from '../../utils/format'
+import { backendEnabled } from '../../services/backendApi'
 
 export default function UserRewards() {
   const { user } = useAuth()
-  const { db, refresh } = useAppData()
+  const { db, refresh, loading, error } = useAppData()
   const toast = useToast()
   const [redeemTarget, setRedeemTarget] = useState(null)
 
-  const balance = user?.points ?? 0
+  const balance = backendEnabled ? (db.rewardsBalance ?? 0) : (user?.points ?? 0)
   const history = db.rewardTransactions
     .filter((t) => t.userId === user.id)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
   const handleRedeem = () => {
+    if (backendEnabled) { toast.error('Coupon redemption is not available through the backend yet.'); return }
     const result = redeemCoupon(user.id, redeemTarget.id)
     if (!result.ok) toast.error(result.error)
     else toast.success(`Redeemed ${redeemTarget.title} (simulated).`)
@@ -32,6 +34,9 @@ export default function UserRewards() {
     <div>
       <h1 className="text-2xl font-bold text-charcoal">Rewards</h1>
       <p className="mt-1 text-charcoal/60">Redeem points for coupons, gift cards, and cash — all simulated for this demo.</p>
+      {backendEnabled && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900">Your balance and reward history come from the backend. Coupon redemption is not supported by the API yet.</p>}
+      {backendEnabled && loading && <p className="mt-3 text-sm text-charcoal/60">Loading rewards…</p>}
+      {backendEnabled && error && <p role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">{error}</p>}
 
       <div className="mt-6 rounded-2xl bg-white p-6 shadow-sm border border-emerald-100">
         <PointsGauge points={balance} label="Available balance" />
@@ -51,11 +56,11 @@ export default function UserRewards() {
               <p className="mt-2 text-sm font-bold text-charcoal">{r.pointsCost.toLocaleString()} points</p>
               <button
                 type="button"
-                disabled={!canRedeem}
+                disabled={!canRedeem || backendEnabled}
                 onClick={() => setRedeemTarget(r)}
                 className="mt-4 w-full rounded-xl bg-forest px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 hover:bg-forest-dark transition"
               >
-                {canRedeem ? 'Redeem' : 'Not enough points'}
+                {backendEnabled ? 'Unavailable' : canRedeem ? 'Redeem' : 'Not enough points'}
               </button>
             </div>
           )

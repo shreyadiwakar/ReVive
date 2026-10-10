@@ -7,10 +7,11 @@ import { useAppData } from '../../context/AppDataContext'
 import { useAuth } from '../../context/AuthContext'
 import { DELIVERY_RATE_PER_KG, PICKUP_STATUS } from '../../utils/constants'
 import { formatCurrency, formatDate, formatKg } from '../../utils/format'
+import { backendEnabled } from '../../services/backendApi'
 
 export default function DeliveryDashboard() {
   const { user } = useAuth()
-  const { db } = useAppData()
+  const { db, loading, error } = useAppData()
 
   const available = db.pickups.filter((p) => p.status === PICKUP_STATUS.REQUESTED && !p.deliveryPartnerId)
   const myJobs = db.pickups.filter((p) => p.deliveryPartnerId === user.id)
@@ -24,6 +25,8 @@ export default function DeliveryDashboard() {
       <div>
         <h1 className="text-2xl font-bold text-charcoal">Welcome back, {user.name.split(' ')[0]}</h1>
         <p className="mt-1 text-charcoal/60">Here's what's moving on your route today.</p>
+        {backendEnabled && loading && <p className="mt-2 text-sm text-charcoal/50">Loading your route…</p>}
+        {backendEnabled && error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
