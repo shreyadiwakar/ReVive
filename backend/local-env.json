@@ -1,0 +1,7 @@
+{
+  "HealthApiFunction": {
+    "AWS_REGION": "us-east-1",
+    "DDB_ENDPOINT": "http://localhost:8000",
+    "TABLE_NAME": "revive-local"
+  }
+}

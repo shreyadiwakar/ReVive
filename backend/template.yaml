@@ -1,0 +1,348 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: ReVive API using API Gateway, Cognito, Lambda, and DynamoDB.
+
+Parameters:
+  TableName:
+    Type: String
+    Default: revive-dev
+    Description: DynamoDB table name for this stack.
+  AllowedOrigins:
+    Type: CommaDelimitedList
+    Default: http://localhost:5173,http://127.0.0.1:5173
+    Description: Exact browser origins permitted to call this API.
+
+Globals:
+  Function:
+    Runtime: nodejs24.x
+    CodeUri: .
+    Handler: dist/handler.handler
+    Timeout: 10
+    MemorySize: 256
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref ReViveTable
+        DDB_ENDPOINT: ''
+        USER_POOL_CLIENT_ID: !Ref ReViveUserPoolClient
+
+Resources:
+  HealthApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - src/handler.ts
+        Target: node24
+        Format: esm
+        Minify: true
+        Sourcemap: true
+    Properties:
+      Handler: handler.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:DescribeTable
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:Query
+                - dynamodb:Scan
+                - dynamodb:TransactWriteItems
+              Resource: !GetAtt ReViveTable.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource: !Sub ${ReViveTable.Arn}/index/*
+      Events:
+        ApiHealth:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /health
+            Method: GET
+        DatabaseHealth:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /health/db
+            Method: GET
+        SignUp:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /auth/signup
+            Method: POST
+        ConfirmSignUp:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /auth/confirm
+            Method: POST
+        Login:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /auth/login
+            Method: POST
+        ListCenters:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /centers
+            Method: GET
+        ListPickups:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /pickups
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        CreatePickup:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /pickups
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+        GetPickup:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /pickups/{id}
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        CancelPickup:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /pickups/{id}/cancel
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+        ListAvailablePickups:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /pickups/available
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        ListPartnerPickups:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /pickups/mine
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        AcceptPickup:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /pickups/{id}/accept
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+        UpdatePickupStatus:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /pickups/{id}/status
+            Method: PATCH
+            Auth:
+              Authorizer: CognitoAuthorizer
+        VerifyPickup:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /pickups/{id}/verify
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+        GetRewards:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /rewards
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        ListCoupons:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /coupons
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        CreateAdminCoupon:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /admin/coupons
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+        UpdateAdminCoupon:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /admin/coupons/{id}
+            Method: PATCH
+            Auth:
+              Authorizer: CognitoAuthorizer
+        RedeemCoupon:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /rewards/redeem
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+        ListCenterPickups:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /center/pickups
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  ReViveHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Auth:
+        Authorizers:
+          CognitoAuthorizer:
+            IdentitySource: '$request.header.Authorization'
+            JwtConfiguration:
+              Audience:
+                - !Ref ReViveUserPoolClient
+              Issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${ReViveUserPool}
+      CorsConfiguration:
+        AllowOrigins: !Ref AllowedOrigins
+        AllowHeaders:
+          - authorization
+          - content-type
+        AllowMethods:
+          - GET
+          - POST
+          - PATCH
+          - OPTIONS
+
+  ReViveUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub revive-users-${AWS::StackName}
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+
+  ReViveUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: revive-api-client
+      UserPoolId: !Ref ReViveUserPool
+      GenerateSecret: false
+      PreventUserExistenceErrors: ENABLED
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  DeliveryPartnersGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: DeliveryPartners
+      Description: Approved delivery partners allowed to claim and update pickups.
+      UserPoolId: !Ref ReViveUserPool
+
+  RecyclingCentersGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: RecyclingCenters
+      Description: Approved recycling center operators allowed to verify pickups.
+      UserPoolId: !Ref ReViveUserPool
+
+  ReViveTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Ref TableName
+      BillingMode: PAY_PER_REQUEST
+      DeletionProtectionEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+        - AttributeName: GSI2PK
+          AttributeType: S
+        - AttributeName: GSI2SK
+          AttributeType: S
+        - AttributeName: GSI3PK
+          AttributeType: S
+        - AttributeName: GSI3SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: GSI2
+          KeySchema:
+            - AttributeName: GSI2PK
+              KeyType: HASH
+            - AttributeName: GSI2SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: GSI3
+          KeySchema:
+            - AttributeName: GSI3PK
+              KeyType: HASH
+            - AttributeName: GSI3SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint
+    Value: !Sub https://${ReViveHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}
+  TableName:
+    Description: DynamoDB table name
+    Value: !Ref ReViveTable
+  UserPoolId:
+    Description: Cognito user pool ID
+    Value: !Ref ReViveUserPool
+  UserPoolClientId:
+    Description: Cognito app client ID
+    Value: !Ref ReViveUserPoolClient

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+backend/node_modules/
+backend/dist/
+backend/.aws-sam/
+.env
+.env.*
+!.env.example
+*.log

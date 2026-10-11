@@ -1,0 +1,30 @@
+{
+  "name": "revive-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "local:db:init": "node scripts/create-local-table.mjs",
+    "local:db:check": "node scripts/check-local-db.mjs",
+    "local:db:drop-test": "node scripts/delete-local-test-table.mjs",
+    "local:users:list": "node scripts/list-local-users.mjs",
+    "local:delivery-history:repair": "node scripts/repair-local-delivery-history.mjs",
+    "local:admin:create": "node scripts/create-local-admin.mjs",
+    "local:admin:reset-password": "node scripts/reset-local-admin-password.mjs",
+    "local:api": "npm run build && node scripts/local-api.mjs",
+    "local:smoke": "node scripts/smoke-local.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.1079.0",
+    "@aws-sdk/client-dynamodb": "^3.1079.0",
+    "@aws-sdk/lib-dynamodb": "^3.1079.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.152",
+    "@types/node": "^22.15.30",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,19 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-forest: #1b5e3a;
+  --color-forest-dark: #134529;
+  --color-mint: #a8e6cf;
+  --color-mint-light: #e8f8f0;
+  --color-charcoal: #2d3436;
+  --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-mint-light text-charcoal font-sans antialiased;
+  margin: 0;
+}
