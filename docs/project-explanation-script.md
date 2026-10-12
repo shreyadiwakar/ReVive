@@ -1,37 +1,55 @@
-# ReVive Project Video Script — Two Speakers
+# ReVive Presentation Script — Two Speakers
 
-**Speaker 1:** Hello, and welcome. We’re here to introduce **ReVive**, a platform designed to make household recycling easier to arrange and easier to follow. ReVive connects residents who have recyclable materials with delivery partners who can collect them, recycling centers that process them, and administrators who oversee the service.
+*Bracketed directions guide the screen recording and are not spoken.*
 
-**Speaker 2:** The problem we wanted to address is that recycling often depends on people figuring out several disconnected steps themselves: where to take materials, how to arrange transport, and whether the material was actually received. ReVive brings those steps into one workflow. A resident requests a pickup, a delivery partner handles the route, and the recycling center records and verifies what it receives.
+## About the project and live walkthrough
 
-**Speaker 1:** The platform has four roles, each with its own views and responsibilities. Residents can schedule and track pickups, find recycling centers, manage their profile, and see their reward points. Delivery partners can review available jobs, accept suitable pickups, update delivery progress, and view their delivery history and earnings. Recycling centers can manage their facility profile, see incoming material, confirm received weights, and verify recycling. Administrators can oversee users, center applications, pickups, and reward settings.
+**Speaker 1:** Hello, we’re presenting **ReVive — Turn waste into worth.** ReVive connects residents who want to recycle with delivery partners who collect materials, recycling centers that receive and verify them, and administrators who oversee the service. We’ll start on the homepage and follow a pickup through the full process, from sign-in to verified recycling and rewards.
 
-**Speaker 2:** Let’s walk through a pickup. A resident chooses a material category, enters the pickup details, selects a date, and provides a location. They can type an address or select a point on the map. Once there are saved coordinates, ReVive can compare the pickup with eligible recycling centers and show distance information to help the resident choose.
+**[On screen: Start on the homepage. Point out the service overview and the calls to action. Click Login and sign in to a registered resident account.]**
 
-**Speaker 1:** The map uses **Leaflet** with **OpenStreetMap** map tiles. The delivery job view can show three useful route figures: the delivery partner’s base to the pickup, the pickup to the recycling center, and the total route. Distances depend on saved map coordinates. Road routing is shown when available; if routing information is unavailable, the interface may use a straight-line estimate or indicate that the distance cannot be calculated. Address search and address lookup from device location use Mapbox when a local Mapbox API key is configured. A user can still place a map pin manually.
+**Speaker 2:** The homepage introduces the service and lets people choose where to go next. After signing in, a resident arrives at a dashboard with their pickup and recycling activity. The graphs summarize recorded recycling activity and material categories, so residents can see the impact of their completed activity at a glance.
 
-**Speaker 2:** After the resident submits the request, an eligible delivery partner can find it in the jobs view. The partner sees the pickup address, destination center, scheduled date, material and estimated load, plus the route distances available for that job. Before accepting, the partner can consider whether the job fits their registered vehicle capacity. They then accept the pickup and update its progress as the material is collected and delivered.
+**[On screen: Briefly point to the resident dashboard’s activity graph and category chart. Then open Schedule Pickup.]**
 
-**Speaker 1:** At the recycling center, staff confirm the material that arrived and enter the actual received weight. That verified weight matters. A request alone does not count as completed recycling: the center’s verification is the step that qualifies the pickup for resident rewards and delivery earnings. The resident can follow the status through the pickup timeline, while the center’s inventory and the delivery partner’s completed history reflect the verified work.
+**Speaker 1:** To arrange a collection, the resident chooses a material, enters an estimated quantity and a convenient time, and sets the pickup address. They can place or adjust a pin on the map so the location has coordinates. ReVive uses that pickup pin and the saved center locations to find centers that accept the material and compare driving-route distances. The route distance is useful when choosing a center; if road routing or a required pin is unavailable, the page explains that the distance cannot be shown.
 
-**Speaker 2:** ReVive’s delivery earnings use a transparent calculation: a **₹20 base fee per completed pickup**, **₹5 per recorded kilometre**, and **₹1 per kilogram based on center-verified weight**, plus eligible bonuses. The configured bonus rules cover daily pickup milestones, heavy loads, verified recycling, and reliability. For example, the ten-pickup daily milestone of ₹120 replaces the ₹50 five-pickup milestone; the two milestones do not stack. The application checks vehicle weight limits and is designed to prevent the same bonus from being counted twice.
+**[On screen: Set the pickup pin, show the eligible center recommendations and their driving distances, select a center, and submit the request. Open My Pickups and show the new request and tracking timeline.]**
 
-**Speaker 1:** These figures are calculated earnings in the application, not a cash transfer. A completed and center-verified pickup is required for the payment calculation. This also makes the calculation easier to explain: the distance comes from the route, the weight comes from the center’s verification, and eligible bonuses are applied according to the configured rules.
+**Speaker 2:** After the resident submits, the pickup appears in their list with its status timeline. The request then becomes available to a delivery partner. The timeline makes it possible to follow the same pickup as it moves through the workflow.
 
-**Speaker 2:** The frontend is built with **React 19** and **Vite**. **React Router** supports the different role-specific pages, **Tailwind CSS** is used for styling, **Recharts** powers dashboard graphs, and **Lucide** supplies interface icons. The maps use **Leaflet** and **React Leaflet**. The backend is written in **TypeScript** and uses the AWS SDK to work with DynamoDB and Cognito-related services.
+**[On screen: Sign out, sign in to an approved delivery partner account, and open Jobs. Show the pickup address, selected center, and route distance details. Accept the job, then demonstrate the available collection and delivery status updates. Show delivery history.]**
 
-**Speaker 1:** The planned AWS architecture is described in an **AWS SAM** template. It defines an API Gateway HTTP API connected to Lambda handlers, a DynamoDB table for application data, and a Cognito user pool for authentication. The template also configures JWT authorization for protected routes, browser CORS settings, and DynamoDB protections such as deletion protection and point-in-time recovery. The Vite frontend can be built as static files for hosting with services such as Amazon S3 and CloudFront.
+**Speaker 1:** The delivery partner can see where to collect the material and where to take it. The route figures show the partner’s base to the pickup, the pickup to the center, and the complete driving route when route data is available. After accepting, the partner updates the job as it is collected and delivered. Their completed delivery records are kept in the delivery view.
 
-**Speaker 2:** It’s important to describe the current status accurately: this project has **not** been deployed to AWS, and no staging AWS resources have been created. The local development workflow runs the API on the developer’s computer and uses **DynamoDB Local** for supported backend data. That lets us develop and demonstrate the pickup-to-verification flow without creating cloud resources. Some demo or unsupported screens can still use browser local storage, which is why the interface may show a demo-mode notice. In those cases, the data is simulated in that browser rather than saved through the backend.
+**[On screen: Sign out, sign in to an approved recycling center account, and open incoming deliveries. Select the delivered pickup, enter the actual received weight, and verify the recycling.]**
 
-**Speaker 1:** Building ReVive has helped us learn how to design around multiple roles while keeping one shared workflow consistent. We’ve worked through connecting a frontend to API routes, modeling pickup status changes, saving data locally, and making rewards depend on verified activity. The map work also showed us why addresses alone are not enough for reliable distance calculations: the system needs usable coordinates.
+**Speaker 2:** At the center, staff confirm what arrived and record the actual weight. That verification is important because rewards and delivery earnings are based on verified work, rather than only on a resident’s estimate when requesting a pickup.
 
-**Speaker 2:** We’ve also learned to distinguish a local prototype from a production service. Before launch, the AWS environment, authentication configuration, deployment, and full production checks still need to be completed. Being clear about that status is part of building a system people can trust.
+**[On screen: Sign in to the resident account again. Show the updated points and reward history, then open Rewards and show an available coupon or redemption if the account has enough points.]**
 
-**Speaker 1:** In our demonstration, we’ll begin as a resident by creating a pickup and comparing the recommended centers and route distances. Then we’ll switch to the delivery partner view, accept the job, and show how the pickup moves through the delivery steps.
+**Speaker 1:** Once the center verifies the pickup, the resident can see the resulting points in Rewards. If an active coupon is available and the resident has enough points, they can redeem it; the application records the redemption and points change.
 
-**Speaker 2:** Next, we’ll switch to the recycling center, enter the received weight, and verify the recycling. Finally, we’ll return to the resident’s rewards and the delivery partner’s earnings history to show how that verification updates both sides of the workflow.
+**[On screen: Sign in as an administrator. Show the dashboard graphs, then the relevant account or center approvals, pickup oversight, and coupon management pages.]**
 
-**Speaker 1:** ReVive is our effort to make recycling collection more convenient and accountable by connecting the resident, the delivery partner, and the recycling center in one traceable process.
+**Speaker 2:** Administrators oversee the shared service. They review accounts and center applications, monitor pickups, and manage reward coupons. The admin dashboard graphs summarize the recycling activity recorded in the system. In particular, verified pickup weights feed the recycling totals and material-category breakdown, which helps the admin see what has actually been processed. The map and graph views present information from saved locations and recorded pickup data; they are there to support operational decisions, not just decoration.
 
-**Speaker 2:** Thank you for watching our presentation of ReVive.
+## Tech stack and schema
+
+**[On screen: Return briefly to the map, then show the resident and admin charts.]**
+
+**Speaker 1:** The frontend is built with React and Vite. React Router supports the role-specific pages, Tailwind CSS is used for styling, and Recharts renders the dashboard graphs. The map layer is a major feature of the product: Leaflet with OpenStreetMap displays pickup pins and center locations, while OSRM and Mapbox can provide route and address data when available. These map features help residents choose a collection point and let delivery partners plan a route.
+
+**Speaker 2:** The database schema is built around DynamoDB as the main NoSQL data store. Core records are split across users, pickups, rewards, and coupons, with each item linked by IDs so the app can retrieve a resident’s history, a delivery job, or a verified recycling record efficiently. For local development, DynamoDB Local mirrors the same structure so the system can be tested before deployment.
+
+## How AWS is used
+
+**[On screen: Briefly show the AWS SAM template, then return to the running local application.]**
+
+**Speaker 1:** The schema follows a simple but scalable NoSQL pattern. Users, pickups, centers, coupons, and reward activity are stored as separate records with shared keys, so the system can track both the operational flow and the user-facing history without mixing responsibilities across entities. The backend API reads and writes these records through structured actions, keeping the logic consistent across residents, delivery partners, and centers.
+
+**Speaker 2:** The map experience is just as important to the product as the database schema: route planning and pickup-center selection rely on saved coordinates, center metadata, and route calculations. This project has not been deployed to AWS, and staging resources have not been created, so our demo uses the local API and DynamoDB Local to show the same workflow without production authentication.
+
+## Learning and growth
+
+**Speaker 1:** ReVive taught us how to design a connected recycling ecosystem across residents, delivery partners, centers, and admins, while keeping every status change clear and trustworthy. We also learned how important the core platform pieces are: DynamoDB and Lambda for storing and processing operational data, and maps for route planning and center selection. This helped us connect the product workflow to real-world logistics while still separating local demo flows from deployed cloud services.
