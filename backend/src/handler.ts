@@ -3,8 +3,10 @@ import {
   AdminDeleteUserCommand,
   AdminListGroupsForUserCommand,
   AdminRemoveUserFromGroupCommand,
+  ConfirmForgotPasswordCommand,
   CognitoIdentityProviderClient,
   ConfirmSignUpCommand,
+  ForgotPasswordCommand,
   GetUserCommand,
   InitiateAuthCommand,
   SignUpCommand,
@@ -468,6 +470,41 @@ async function confirmSignUp(event: Parameters<APIGatewayProxyHandlerV2>[0]) {
   try {
     await cognito.send(new ConfirmSignUpCommand({ ClientId: clientId, Username: email, ConfirmationCode: code }))
     return json(200, { status: 'confirmed' })
+  } catch (error) {
+    return providerError(error)
+  }
+}
+
+async function requestPasswordReset(event: Parameters<APIGatewayProxyHandlerV2>[0]) {
+  const input = readBody<{ email?: string }>(event.body, event.isBase64Encoded)
+  const email = input?.email?.trim().toLowerCase()
+  if (!email || !email.includes('@')) return json(400, { error: 'Enter a valid email address.' })
+  if (!clientId) return json(500, { error: 'Identity provider is not configured.' })
+  try {
+    await cognito.send(new ForgotPasswordCommand({ ClientId: clientId, Username: email }))
+    return json(200, { status: 'code_sent', message: 'If an account exists for that email, a reset code has been sent.' })
+  } catch (error) {
+    if (['UserNotFoundException', 'InvalidParameterException'].includes((error as { name?: string }).name ?? '')) {
+      return json(200, { status: 'code_sent', message: 'If an account exists for that email, a reset code has been sent.' })
+    }
+    return providerError(error)
+  }
+}
+
+async function confirmPasswordReset(event: Parameters<APIGatewayProxyHandlerV2>[0]) {
+  const input = readBody<{ email?: string; code?: string; password?: string }>(event.body, event.isBase64Encoded)
+  const email = input?.email?.trim().toLowerCase()
+  const code = input?.code?.trim()
+  const password = input?.password
+  if (!email || !email.includes('@') || !code || typeof password !== 'string' || password.length < 8) {
+    return json(400, { error: 'Enter your email, reset code, and a password with at least 8 characters.' })
+  }
+  if (!clientId) return json(500, { error: 'Identity provider is not configured.' })
+  try {
+    await cognito.send(new ConfirmForgotPasswordCommand({
+      ClientId: clientId, Username: email, ConfirmationCode: code, Password: password,
+    }))
+    return json(200, { status: 'password_reset' })
   } catch (error) {
     return providerError(error)
   }
@@ -1711,6 +1748,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   }
   if (method === 'POST' && path === '/auth/signup') return signUp(event)
   if (method === 'POST' && path === '/auth/confirm') return confirmSignUp(event)
+  if (method === 'POST' && path === '/auth/password/forgot') return requestPasswordReset(event)
+  if (method === 'POST' && path === '/auth/password/reset') return confirmPasswordReset(event)
   if (method === 'POST' && path === '/auth/login') return login(event)
   if (method === 'POST' && path === '/auth/refresh') return refreshSession(event)
   if (method === 'GET' && path === '/centers') {

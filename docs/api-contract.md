@@ -10,10 +10,14 @@ response bodies use `application/json`. Authenticated requests send
 |---|---|---|
 | `POST /auth/signup` | `{ "email", "password", "name" }` | `201 { "status": "confirmation_required", "userId", "email" }` |
 | `POST /auth/confirm` | `{ "email", "code" }` | `200 { "status": "confirmed" }` |
+| `POST /auth/password/forgot` | `{ "email" }` | `200 { "status": "code_sent", "message" }` |
+| `POST /auth/password/reset` | `{ "email", "code", "password" }` | `200 { "status": "password_reset" }` |
 | `POST /auth/login` | `{ "email", "password" }` | `200 { "accessToken", "idToken", "refreshToken", "expiresIn", "tokenType" }` |
 
-Signup currently creates resident accounts only. Cognito sends the email
-confirmation code. The API Gateway JWT authorizer protects pickup routes.
+Signup creates resident, delivery, or center accounts. Cognito sends the email
+confirmation code. AWS password recovery sends a Cognito reset code and
+confirms the new password through the Cognito app client. The API Gateway JWT
+authorizer protects authenticated routes.
 The standalone local runner uses a local-only sign-up/login implementation
 backed by DynamoDB Local; local passwords are salted and hashed, and email
 confirmation is skipped. It does not call Cognito.

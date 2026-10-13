@@ -1,6 +1,5 @@
 import { ArrowLeft, ArrowRight, Factory, Truck, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import SimulatedBanner from '../components/SimulatedBanner'
 
 const ROLE_CARDS = [
   {
@@ -33,10 +32,6 @@ export default function Register() {
         <div className="mt-6 text-center">
           <h1 className="text-3xl font-bold text-charcoal">Join ReVive</h1>
           <p className="mt-2 text-charcoal/60">Choose how you'd like to take part in the recycling marketplace.</p>
-        </div>
-
-        <div className="mx-auto mt-4 max-w-sm">
-          <SimulatedBanner compact />
         </div>
 
         <div className="mt-10 grid gap-6 md:grid-cols-3">

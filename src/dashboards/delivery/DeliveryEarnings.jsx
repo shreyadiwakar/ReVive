@@ -2,7 +2,6 @@ import { DollarSign } from 'lucide-react'
 import { useState } from 'react'
 import EmptyState from '../../components/EmptyState'
 import Pagination from '../../components/Pagination'
-import SimulatedBanner from '../../components/SimulatedBanner'
 import StatCard from '../../components/StatCard'
 import { useAppData } from '../../context/AppDataContext'
 import { useAuth } from '../../context/AuthContext'
@@ -39,8 +38,6 @@ export default function DeliveryEarnings() {
       <p className="mt-1 text-charcoal/60">Payments are calculated only after the recycling center verifies a pickup.</p>
       {backendEnabled && loading && <p className="mt-2 text-sm text-charcoal/50">Loading verified deliveries...</p>}
       {backendEnabled && error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
-
-      <div className="mt-4 max-w-sm"><SimulatedBanner compact /></div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <StatCard label="Verified earnings" value={formatRupees(earnings.total)} icon={DollarSign} tone="amber" />

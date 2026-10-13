@@ -1,7 +1,8 @@
 import { ArrowLeft, LogIn, ShieldAlert } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { roleHomePath, useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContext'
+import { awsApiEnabled } from '../services/backendApi'
 import { ROLES } from '../utils/constants'
 
 export default function Login() {
@@ -27,7 +28,7 @@ export default function Login() {
         setError('Administrator accounts must sign in from the admin login page.')
         return
       }
-      navigate(roleHomePath(result.session.role))
+      navigate('/')
     } finally {
       setBusy(false)
     }
@@ -75,6 +76,7 @@ export default function Login() {
                 className="w-full rounded-xl border border-emerald-200 px-3.5 py-2.5 text-sm focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
               />
             </div>
+            {awsApiEnabled && <div className="-mt-2 text-right"><Link to="/forgot-password" state={{ email }} className="text-sm font-semibold text-forest hover:underline">Forgot password?</Link></div>}
               <button
               type="submit"
               disabled={busy}

@@ -6,8 +6,9 @@ export function isValidPhone(phone) {
   return /^[\d\s+\-()]{10,15}$/.test(String(phone).trim())
 }
 
-export function validatePasswordMatch(password, confirm) {
-  return password.length >= 8 && password === confirm
+export function validatePasswordMatch(password, confirm, requireCognitoFormat = false) {
+  const hasCognitoFormat = /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password)
+  return password.length >= 8 && password === confirm && (!requireCognitoFormat || hasCognitoFormat)
 }
 
 export function required(value) {

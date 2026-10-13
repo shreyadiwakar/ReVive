@@ -131,6 +131,10 @@ export const updateBackendPickup = (id, status) => apiRequest(`/pickups/${encode
 export const verifyBackendPickup = (id, verifiedWeightKg, note) => apiRequest(`/pickups/${encodeURIComponent(id)}/verify`, { method: 'POST', body: { verifiedWeightKg: Number(verifiedWeightKg), note } })
 export const registerBackendUser = (profile) => apiRequest('/auth/signup', { method: 'POST', body: profile })
 export const confirmBackendUser = (email, code) => apiRequest('/auth/confirm', { method: 'POST', body: { email, code } })
+export const requestBackendPasswordReset = (email) => apiRequest('/auth/password/forgot', { method: 'POST', body: { email } })
+export const confirmBackendPasswordReset = (email, code, password) => apiRequest('/auth/password/reset', {
+  method: 'POST', body: { email, code, password },
+})
 export const loginBackendUser = (email, password) => apiRequest('/auth/login', { method: 'POST', body: { email, password } })
 export const getBackendAccount = async () => (await apiRequest('/account')).profile
 export const updateBackendAccount = (profile) => apiRequest('/account', { method: 'PATCH', body: profile })

@@ -1,9 +1,9 @@
 import { ArrowLeft, BadgeCheck, ShieldAlert, Truck } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import SimulatedBanner from '../../components/SimulatedBanner'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
+import { awsApiEnabled } from '../../services/backendApi'
 import { ROLES, VEHICLE_TYPES } from '../../utils/constants'
 import { isValidEmail, isValidPhone, required, validatePasswordMatch } from '../../utils/validation'
 import { Field, inputClass } from './formHelpers'
@@ -45,7 +45,11 @@ export default function RegisterDelivery() {
     if (!required(form.name)) next.name = 'Full name is required.'
     if (!isValidEmail(form.email)) next.email = 'Enter a valid email address.'
     if (!isValidPhone(form.phone)) next.phone = 'Enter a valid phone number.'
-    if (!validatePasswordMatch(form.password, form.confirm)) next.confirm = 'Passwords must match and be at least 8 characters.'
+    if (!validatePasswordMatch(form.password, form.confirm, awsApiEnabled)) {
+      next.confirm = awsApiEnabled
+        ? 'Use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Passwords must match.'
+        : 'Passwords must match and be at least 8 characters.'
+    }
     if (!required(form.address)) next.address = 'Home/base address is required.'
     if (!required(form.city)) next.city = 'City is required.'
     if (!isValidLocation(form)) next.location = 'Locate your address on the map or use your current location.'
@@ -115,6 +119,7 @@ export default function RegisterDelivery() {
               <input type="password" value={form.confirm} onChange={update('confirm')} className={inputClass(errors.confirm)} />
             </Field>
           </div>
+          {awsApiEnabled && <p className="-mt-2 text-xs text-charcoal/60">Password must have at least 8 characters, including uppercase and lowercase letters and a number. A symbol is optional.</p>}
           <AddressLocationField address={form.address} city={form.city} location={form} onChange={updateLocation} addressLabel="Home/base address" addressError={errors.address} cityError={errors.city} locationError={errors.location} />
           <div>
             <Field label="Service area" error={errors.serviceArea}>
@@ -150,9 +155,6 @@ export default function RegisterDelivery() {
           </button>
         </form>
 
-        <div className="mt-5">
-          <SimulatedBanner compact />
-        </div>
         <p className="mt-3 text-center text-sm text-charcoal/60">
           Already have an account? <Link to="/login" className="font-semibold text-forest hover:underline">Sign in</Link>
         </p>

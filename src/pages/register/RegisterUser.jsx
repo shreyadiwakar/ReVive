@@ -3,8 +3,9 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
+import { awsApiEnabled } from '../../services/backendApi'
 import { ROLES } from '../../utils/constants'
-import { isValidEmail, isValidPhone, required } from '../../utils/validation'
+import { isValidEmail, isValidPhone, required, validatePasswordMatch } from '../../utils/validation'
 import { Field, inputClass } from './formHelpers'
 import AddressLocationField from '../../components/AddressLocationField'
 import { isValidLocation } from '../../services/mapServices'
@@ -31,7 +32,11 @@ export default function RegisterUser() {
     if (!required(form.name)) next.name = 'Full name is required.'
     if (!isValidEmail(form.email)) next.email = 'Enter a valid email address.'
     if (!isValidPhone(form.phone)) next.phone = 'Enter a valid phone number.'
-    if (form.password.length < 8 || form.password !== form.confirm) next.confirm = 'Passwords must match and be at least 8 characters.'
+    if (!validatePasswordMatch(form.password, form.confirm, awsApiEnabled)) {
+      next.confirm = awsApiEnabled
+        ? 'Use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Passwords must match.'
+        : 'Passwords must match and be at least 8 characters.'
+    }
     if (!required(form.address)) next.address = 'Pickup address is required.'
     if (!required(form.city)) next.city = 'City is required.'
     if (!isValidLocation(form)) next.location = 'Locate your address on the map or use your current location.'
@@ -104,6 +109,7 @@ export default function RegisterUser() {
               <input type="password" value={form.confirm} onChange={update('confirm')} className={inputClass(errors.confirm)} />
             </Field>
           </div>
+          {awsApiEnabled && <p className="-mt-2 text-xs text-charcoal/60">Password must have at least 8 characters, including uppercase and lowercase letters and a number. A symbol is optional.</p>}
           <AddressLocationField address={form.address} city={form.city} location={form} onChange={updateLocation} addressLabel="Pickup address" addressError={errors.address} cityError={errors.city} locationError={errors.location} />
 
           <label className="flex items-start gap-2 text-sm text-charcoal/70">

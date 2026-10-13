@@ -2,8 +2,6 @@ import { LogOut, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { backendEnabled } from '../services/backendApi'
-import SimulatedBanner from './SimulatedBanner'
 
 const navLinkClass = ({ isActive }) =>
   `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
@@ -95,9 +93,6 @@ export default function DashboardLayout({ brand, navItems }) {
             <Menu size={22} />
           </button>
         </header>
-        {!backendEnabled && <div className="border-b border-emerald-100 bg-white px-4 py-2 md:px-8">
-          <SimulatedBanner compact />
-        </div>}
         <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
           <Outlet />
         </main>

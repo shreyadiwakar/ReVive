@@ -1,10 +1,10 @@
 import { ArrowLeft, FileCheck2, Factory, ShieldAlert } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import SimulatedBanner from '../../components/SimulatedBanner'
 import AddressLocationField from '../../components/AddressLocationField'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
+import { awsApiEnabled } from '../../services/backendApi'
 import { ROLES, WASTE_CATEGORIES } from '../../utils/constants'
 import { isValidLocation } from '../../services/mapServices'
 import { isValidEmail, isValidPhone, required, validatePasswordMatch } from '../../utils/validation'
@@ -56,7 +56,11 @@ export default function RegisterCenter() {
     if (!required(form.contactPerson)) next.contactPerson = 'Contact person is required.'
     if (!isValidEmail(form.email)) next.email = 'Enter a valid email address.'
     if (!isValidPhone(form.phone)) next.phone = 'Enter a valid phone number.'
-    if (!validatePasswordMatch(form.password, form.confirm)) next.confirm = 'Passwords must match and be at least 8 characters.'
+    if (!validatePasswordMatch(form.password, form.confirm, awsApiEnabled)) {
+      next.confirm = awsApiEnabled
+        ? 'Use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Passwords must match.'
+        : 'Passwords must match and be at least 8 characters.'
+    }
     if (!required(form.address)) next.address = 'Complete address is required.'
     if (!required(form.city)) next.city = 'City is required.'
     if (!isValidLocation(form)) next.location = 'Pin the facility location on the map.'
@@ -116,7 +120,6 @@ export default function RegisterCenter() {
               <input value={form.contactPerson} onChange={update('contactPerson')} className={inputClass(errors.contactPerson)} />
             </Field>
           </div>
-
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Email" error={errors.email}>
               <input type="email" value={form.email} onChange={update('email')} className={inputClass(errors.email)} />
@@ -133,6 +136,7 @@ export default function RegisterCenter() {
               <input type="password" value={form.confirm} onChange={update('confirm')} className={inputClass(errors.confirm)} />
             </Field>
           </div>
+          {awsApiEnabled && <p className="-mt-2 text-xs text-charcoal/60">Password must have at least 8 characters, including uppercase and lowercase letters and a number. A symbol is optional.</p>}
           <AddressLocationField address={form.address} city={form.city} location={form} onChange={updateAddressLocation} addressLabel="Complete address" addressError={errors.address} cityError={errors.city} locationError={errors.location} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Operating hours" error={errors.operatingHours}>
@@ -179,9 +183,6 @@ export default function RegisterCenter() {
           </button>
         </form>
 
-        <div className="mt-5">
-          <SimulatedBanner compact />
-        </div>
         <p className="mt-3 text-center text-sm text-charcoal/60">
           Already have an account? <Link to="/login" className="font-semibold text-forest hover:underline">Sign in</Link>
         </p>

@@ -9,7 +9,7 @@ Parameters:
     Description: DynamoDB table name for this stack.
   AllowedOrigins:
     Type: CommaDelimitedList
-    Default: http://localhost:5173,http://127.0.0.1:5173
+    Default: http://localhost:5173,http://127.0.0.1:5173,https://main.d1cvotnz34cia5.amplifyapp.com
     Description: Exact browser origins permitted to call this API.
 
 Globals:
@@ -90,6 +90,18 @@ Resources:
             ApiId: !Ref ReViveHttpApi
             Path: /auth/confirm
             Method: POST
+        RequestPasswordReset:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /auth/password/forgot
+            Method: POST
+        ConfirmPasswordReset:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /auth/password/reset
+            Method: POST
         Login:
           Type: HttpApi
           Properties:
@@ -102,6 +114,22 @@ Resources:
             ApiId: !Ref ReViveHttpApi
             Path: /auth/refresh
             Method: POST
+        GetAccountProfile:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /account
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        UpdateAccountProfile:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /account
+            Method: PATCH
+            Auth:
+              Authorizer: CognitoAuthorizer
         ListCenters:
           Type: HttpApi
           Properties:

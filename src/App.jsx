@@ -13,6 +13,8 @@ import RegisterCenter from './pages/register/RegisterCenter'
 import RegisterDelivery from './pages/register/RegisterDelivery'
 import RegisterUser from './pages/register/RegisterUser'
 import ConfirmSignup from './pages/ConfirmSignup'
+import ForgotPassword from './pages/ForgotPassword'
+import { awsApiEnabled } from './services/backendApi'
 
 export default function App() {
   return (
@@ -25,6 +27,7 @@ export default function App() {
       <Route path="/register/delivery" element={<RegisterDelivery />} />
       <Route path="/register/center" element={<RegisterCenter />} />
       <Route path="/confirm-signup" element={<ConfirmSignup />} />
+      {awsApiEnabled && <Route path="/forgot-password" element={<ForgotPassword />} />}
 
       <Route
         path="/user/*"

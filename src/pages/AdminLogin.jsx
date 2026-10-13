@@ -1,12 +1,14 @@
 import { ArrowLeft, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { awsApiEnabled } from '../services/backendApi'
 import { ROLES } from '../utils/constants'
 
 export default function AdminLogin() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -37,6 +39,8 @@ export default function AdminLogin() {
           </div>
         </div>
 
+        {location.state?.message && <p role="status" className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-forest">{location.state.message}</p>}
+
         {error && (
           <div className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">
             <ShieldAlert size={16} className="mt-0.5 shrink-0" /> {error}
@@ -66,6 +70,7 @@ export default function AdminLogin() {
               className="w-full rounded-xl border border-emerald-200 px-3.5 py-2.5 text-sm focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
             />
           </div>
+          {awsApiEnabled && <div className="-mt-2 text-right"><Link to="/forgot-password" state={{ email, loginPath: '/admin/login' }} className="text-sm font-semibold text-forest hover:underline">Forgot password?</Link></div>}
           <button
             type="submit"
             className="w-full rounded-xl bg-forest px-4 py-2.5 text-sm font-semibold text-white hover:bg-forest-dark transition"
