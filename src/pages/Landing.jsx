@@ -44,7 +44,7 @@ const BENEFITS = [
 export default function Landing() {
   const { db } = useAppData()
   const { user } = useAuth()
-  const residentAction = user ? roleHomePath(user.role) : '/register/user'
+  const residentAction = user ? roleHomePath(user.role) : '/register'
   const partnerAction = user ? roleHomePath(user.role) : '/register'
   const centers = db.centers.filter((c) => c.available).slice(0, 3)
   const coupons = db.coupons.filter((coupon) => coupon.active !== false).slice(0, 4)

@@ -7,8 +7,7 @@ s3_prefix = "revive"
 region = "ap-south-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "TableName=\"revive-dev\" AllowedOrigins=\"http://localhost:5173,http://127.0.0.1:5173\""
-image_repositories = []
+parameter_overrides = "TableName=\"revive-dev\" AllowedOrigins=\"http://localhost:5173,http://127.0.0.1:5173,https://main.d1cvotnz34cia5.amplifyapp.com\""
 
 [default.global.parameters]
 region = "ap-south-1"
