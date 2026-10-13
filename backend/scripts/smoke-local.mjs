@@ -1,10 +1,48 @@
 import { randomUUID } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb'
 
 const baseUrl = process.env.LOCAL_API_URL ?? 'http://127.0.0.1:3001'
 const signupHeaders = { 'x-local-role': 'resident' }
 let residentHeaders = signupHeaders
-const adminHeaders = { 'x-local-role': 'admin' }
+const unique = randomUUID()
+const smokeAdminId = `local-smoke-admin-${unique}`
+const adminHeaders = { 'x-local-role': 'admin', 'x-local-user': smokeAdminId }
+
+async function createTemporaryAdminProfile() {
+  const apiHost = new URL(baseUrl).hostname
+  if (!['localhost', '127.0.0.1', '::1'].includes(apiHost)) {
+    throw new Error('The smoke test only sends requests to a local API.')
+  }
+  const endpoint = process.env.DDB_ENDPOINT ?? 'http://localhost:8000'
+  if (!/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/i.test(endpoint)) {
+    throw new Error('The smoke test only creates profiles in local DynamoDB.')
+  }
+  const email = `${smokeAdminId}@example.test`
+  const now = new Date().toISOString()
+  const client = new DynamoDBClient({
+    region: process.env.AWS_REGION ?? 'us-east-1', endpoint,
+    credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
+  })
+  const documentClient = DynamoDBDocumentClient.from(client)
+  try {
+    await documentClient.send(new PutCommand({
+      TableName: process.env.TABLE_NAME ?? 'revive-local',
+      Item: {
+        PK: `ACCOUNT#${smokeAdminId}`, SK: 'PROFILE', id: smokeAdminId,
+        role: 'admin', email, name: 'Smoke Test Administrator',
+        status: 'active', approvalStatus: 'approved', points: 0,
+        GSI1PK: `EMAIL#${email}`, GSI1SK: `ACCOUNT#${smokeAdminId}`,
+        createdAt: now, updatedAt: now,
+      },
+      ConditionExpression: 'attribute_not_exists(PK)',
+    }))
+  } finally {
+    documentClient.destroy()
+  }
+}
 
 async function call(path, { method = 'GET', roleHeaders = residentHeaders, body, expectedStatus = 200 } = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
@@ -32,7 +70,17 @@ try {
   await call('/health')
   const database = await call('/health/db')
   if (database.database !== 'connected') throw new Error('DynamoDB health endpoint did not report connected.')
-  const unique = randomUUID()
+  await createTemporaryAdminProfile()
+  await call('/account', { roleHeaders: {}, expectedStatus: 401 })
+  await call('/auth/signup', {
+    method: 'POST', roleHeaders: signupHeaders, expectedStatus: 400,
+    body: {
+      role: 'admin', email: `local-smoke-escalation-${unique}@example.test`,
+      password: `admin-test-${unique}`, name: 'Untrusted Administrator',
+      address: '1 Local Test Road', city: 'Bengaluru', latitude: 12.9750, longitude: 77.6000,
+    },
+  })
+
   const centerEmail = `local-smoke-center-${unique}@example.test`
   const centerSignup = await call('/auth/signup', {
     method: 'POST', roleHeaders: signupHeaders, expectedStatus: 201,
@@ -48,6 +96,7 @@ try {
   if (centerAccount?.role !== 'center' || centerAccount.approvalStatus !== 'pending' || !centerAccount.centerId) {
     throw new Error('Center registration did not create a pending center application.')
   }
+  await call('/center/pickups', { roleHeaders: { 'x-local-role': 'center', 'x-local-user': centerAccount.id }, expectedStatus: 403 })
 
   const deliveryEmail = `local-smoke-delivery-${unique}@example.test`
   const deliverySignup = await call('/auth/signup', {
@@ -56,7 +105,7 @@ try {
       role: 'delivery', email: deliveryEmail, password: `delivery-test-${unique}`,
       name: 'Local Smoke Delivery', phone: '+91 90000 12345', city: 'Bengaluru',
       address: '2 Local Test Road', latitude: 12.9800, longitude: 77.6100,
-      serviceArea: 'Bengaluru', vehicleType: 'Bicycle', vehicleReg: `SMOKE-${unique.slice(0, 8)}`,
+      serviceArea: 'Bengaluru', vehicleType: 'Bicycle cart', vehicleReg: `SMOKE-${unique.slice(0, 8)}`,
     },
   })
   const deliveryAccount = deliverySignup.session
@@ -65,6 +114,7 @@ try {
   }
   await call('/pickups/available', { roleHeaders: { 'x-local-role': 'delivery', 'x-local-user': deliveryAccount.id }, expectedStatus: 403 })
 
+  await call('/admin/snapshot', { roleHeaders: signupHeaders, expectedStatus: 403 })
   const pendingSnapshot = await call('/admin/snapshot', { roleHeaders: adminHeaders })
   if (!pendingSnapshot.users?.some((user) => user.id === centerAccount.id && user.approvalStatus === 'pending')) {
     throw new Error('Admin backend did not return the pending center application.')
@@ -81,6 +131,8 @@ try {
   }
   const centerHeaders = { 'x-local-role': 'center', 'x-local-user': centerAccount.id }
   const deliveryHeaders = { 'x-local-role': 'delivery', 'x-local-user': deliveryAccount.id }
+  await call('/pickups', { method: 'POST', roleHeaders: deliveryHeaders, body: {}, expectedStatus: 403 })
+  await call('/rewards', { roleHeaders: deliveryHeaders, expectedStatus: 403 })
   const centerQueue = await call('/center/pickups', { roleHeaders: centerHeaders })
   if (centerQueue.items?.length) throw new Error('A newly registered center unexpectedly has existing pickups.')
 
@@ -106,10 +158,23 @@ try {
   })
   if (signedIn.session?.id !== registration.session.id) throw new Error('Local account login returned a different account.')
   residentHeaders = { 'x-local-role': 'resident', 'x-local-user': signedIn.session.id }
+  const otherResident = await call('/auth/signup', {
+    method: 'POST', roleHeaders: signupHeaders, expectedStatus: 201,
+    body: {
+      email: `local-smoke-other-${unique}@example.test`, password: `other-test-${unique}`,
+      name: 'Local Smoke Other Resident', phone: '+91 90000 12345',
+      address: '3 Local Test Road', city: 'Bengaluru', latitude: 12.9760, longitude: 77.6010,
+    },
+  })
+  const otherResidentHeaders = { 'x-local-role': 'resident', 'x-local-user': otherResident.session.id }
+  await call('/admin/snapshot', { roleHeaders: residentHeaders, expectedStatus: 403 })
   await call('/auth/login', { method: 'POST', roleHeaders: signupHeaders, body: { email, password: 'incorrect-password' }, expectedStatus: 401 })
   await call('/auth/signup', {
     method: 'POST', roleHeaders: signupHeaders, expectedStatus: 409,
-    body: { email, password, name: 'Duplicate Resident' },
+    body: {
+      email, password, name: 'Duplicate Resident', phone: '+91 90000 12345',
+      address: '1 Local Test Road', city: 'Bengaluru', latitude: 12.9750, longitude: 77.6000,
+    },
   })
   const account = await call('/account', { roleHeaders: residentHeaders })
   if (account.profile?.address !== '1 Local Test Road') throw new Error('Local account profile was not persisted.')
@@ -129,6 +194,8 @@ try {
   })
   const pickupId = pickupResult.pickup?.id
   if (!pickupId) throw new Error('Pickup creation did not return a pickup id.')
+  await call(`/pickups/${pickupId}`, { roleHeaders: otherResidentHeaders, expectedStatus: 404 })
+  await call(`/pickups/${pickupId}/cancel`, { method: 'POST', roleHeaders: otherResidentHeaders, expectedStatus: 409 })
 
   const accepted = await call(`/pickups/${pickupId}/accept`, { method: 'POST', roleHeaders: deliveryHeaders })
   if (accepted.pickup?.status !== 'Pickup Scheduled') throw new Error('Pickup claim did not schedule the pickup.')
@@ -175,13 +242,21 @@ try {
     balanceAfterDuplicateAttempt: afterRetry.balance,
     ledgerEntries: afterRetry.transactions.length,
     duplicateVerification: '409; no duplicate award',
+    authorizationChecks: [
+      'unauthenticated account request: 401',
+      'self-service admin role: 400',
+      'unapproved delivery and center access: 403',
+      'delivery access to resident pickup and rewards routes: 403',
+      'resident access to admin route: 403',
+      'cross-account pickup read/cancel: 404/409',
+    ],
   }, null, 2))
 } catch (error) {
   console.error(`Local pickup-to-reward smoke check failed: ${error.message}`)
   process.exitCode = 1
 } finally {
-  const cleanup = spawnSync(process.execPath, [new URL('./cleanup-local-smoke-data.mjs', import.meta.url).pathname], {
-    env: process.env,
+  const cleanup = spawnSync(process.execPath, [fileURLToPath(new URL('./cleanup-local-smoke-data.mjs', import.meta.url))], {
+    env: { ...process.env, LOCAL_SMOKE_RUN_ID: unique },
     stdio: 'inherit',
   })
   if (cleanup.status !== 0) {

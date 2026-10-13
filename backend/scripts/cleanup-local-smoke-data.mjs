@@ -3,9 +3,17 @@ import { BatchWriteCommand, DynamoDBDocumentClient, ScanCommand } from '@aws-sdk
 
 const tableName = process.env.TABLE_NAME ?? 'revive-local'
 const endpoint = process.env.DDB_ENDPOINT ?? 'http://localhost:8000'
+const runId = process.env.LOCAL_SMOKE_RUN_ID
 if (!/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/i.test(endpoint)) {
   throw new Error('This cleanup is restricted to a local DynamoDB endpoint.')
 }
+if (runId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(runId)) {
+  throw new Error('LOCAL_SMOKE_RUN_ID must be a UUID.')
+}
+const escapedRunId = runId?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const smokeAccountEmail = runId
+  ? new RegExp(`^local-smoke-(?:(?:admin|center|delivery|other)-)?${escapedRunId}@example\\.test$`, 'i')
+  : /^local-smoke-(?:(?:admin|center|delivery|other)-)?[^@]+@example\.test$/i
 
 const client = new DynamoDBClient({
   region: 'us-east-1',
@@ -25,7 +33,7 @@ try {
 
   const testAccounts = items.filter((item) => item.SK === 'PROFILE'
     && typeof item.email === 'string'
-    && /^local-smoke-[^@]+@example\.test$/i.test(item.email))
+    && smokeAccountEmail.test(item.email))
   const accountIds = new Set(testAccounts.map((item) => String(item.id)))
   const centerIds = new Set(testAccounts.map((item) => String(item.centerId ?? '')).filter(Boolean))
   const pickupIds = new Set(items.filter((item) => item.SK === 'META'

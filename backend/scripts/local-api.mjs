@@ -41,14 +41,15 @@ const server = createServer(async (request, response) => {
   const couponMatch = url.pathname.match(/^\/admin\/coupons\/([^/]+)$/)
   const complaintMatch = url.pathname.match(/^\/admin\/complaints\/([^/]+)$/)
   const myComplaintMatch = url.pathname.match(/^\/complaints\/([^/]+)$/)
-  const role = String(request.headers['x-local-role'] ?? 'resident').toLowerCase()
-  if (!Object.hasOwn(groupsByRole, role)) {
-    respond(response, 400, { ...corsHeaders, 'content-type': 'application/json' }, JSON.stringify({ error: 'x-local-role must be resident, delivery, or center.' }))
+  const roleHeader = request.headers['x-local-role']
+  const role = roleHeader == null ? null : String(roleHeader).toLowerCase()
+  if (role && !Object.hasOwn(groupsByRole, role)) {
+    respond(response, 400, { ...corsHeaders, 'content-type': 'application/json' }, JSON.stringify({ error: 'x-local-role must be resident, delivery, center, or admin.' }))
     return
   }
   const defaultUser = role === 'delivery' ? 'local-delivery' : role === 'center' ? 'local-center' : role === 'admin' ? 'local-admin' : 'local-resident'
-  const subject = String(request.headers['x-local-user'] ?? defaultUser).trim()
-  if (!subject || subject.length > 128) {
+  const subject = role ? String(request.headers['x-local-user'] ?? defaultUser).trim() : ''
+  if (role && (!subject || subject.length > 128)) {
     respond(response, 400, { ...corsHeaders, 'content-type': 'application/json' }, JSON.stringify({ error: 'x-local-user must be between 1 and 128 characters.' }))
     return
   }
@@ -97,11 +98,11 @@ const server = createServer(async (request, response) => {
       timeEpoch: Date.now(),
       authorizer: {
         jwt: {
-          claims: {
+          claims: role ? {
             sub: subject,
             'cognito:groups': groupsByRole[role],
             token_use: 'access',
-          },
+          } : {},
         },
       },
     },

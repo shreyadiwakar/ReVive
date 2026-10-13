@@ -51,6 +51,10 @@ export default function RegisterUser() {
         setFormError(result.error)
         return
       }
+      if (result.confirmationRequired) {
+        navigate('/confirm-signup', { state: { email: result.email } })
+        return
+      }
       toast.success('Account created! Welcome to ReVive.')
       navigate('/user/dashboard')
     } finally {

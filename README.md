@@ -33,6 +33,11 @@ configure environment variables, and provision the first administrator. The
 Supabase service-role key must stay in Vercel's server-only environment and
 must never use a `VITE_` prefix.
 
+For the AWS SAM backend plus Vercel frontend architecture, see
+[`docs/aws-vercel-full-stack-deployment.md`](docs/aws-vercel-full-stack-deployment.md).
+That guide also lists the AWS authentication and route integration work needed
+before the current frontend can use the deployed AWS API.
+
 ## Run locally on Windows
 
 Requirements: Node.js with npm, Docker Desktop, and PowerShell.

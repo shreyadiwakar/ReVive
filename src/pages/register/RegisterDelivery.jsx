@@ -65,6 +65,10 @@ export default function RegisterDelivery() {
       setFormError(result.error)
       return
     }
+    if (result.confirmationRequired) {
+      navigate('/confirm-signup', { state: { email: result.email } })
+      return
+    }
     toast.success('Application submitted — pending admin approval.')
     navigate('/delivery/dashboard')
   }

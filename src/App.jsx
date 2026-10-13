@@ -12,6 +12,7 @@ import Register from './pages/Register'
 import RegisterCenter from './pages/register/RegisterCenter'
 import RegisterDelivery from './pages/register/RegisterDelivery'
 import RegisterUser from './pages/register/RegisterUser'
+import ConfirmSignup from './pages/ConfirmSignup'
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
       <Route path="/register/user" element={<RegisterUser />} />
       <Route path="/register/delivery" element={<RegisterDelivery />} />
       <Route path="/register/center" element={<RegisterCenter />} />
+      <Route path="/confirm-signup" element={<ConfirmSignup />} />
 
       <Route
         path="/user/*"

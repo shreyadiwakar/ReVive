@@ -102,8 +102,21 @@ an earlier run.
 ## AWS deployment status
 
 No AWS resources are created by these commands. Production authentication stays
-on Cognito and was not changed as part of local integration. The new admin
-approval endpoints are currently wired to the standalone local API only; AWS
-API Gateway routes, IAM permissions, Cognito admin group provisioning, and
-production frontend auth still need a separate staging implementation and
-review before deployment.
+on Cognito and was not changed as part of local integration. The SAM template
+defines the AWS API routes, DynamoDB permissions, and Cognito role groups,
+including `PlatformAdmins`. AWS sign-up creates resident, delivery, or center
+DynamoDB profiles; partner profiles remain pending until an admin approves
+them, at which point the backend adds the matching Cognito group. Admin access
+requires both the `PlatformAdmins` group and an active, approved DynamoDB admin
+profile. Follow the first-admin provisioning steps in
+`../docs/aws-vercel-full-stack-deployment.md` before enabling admin use.
+
+The React frontend supports local, Vercel, and AWS API modes. AWS signup uses
+Cognito email confirmation and access tokens refresh through the backend.
+At first login, an existing Cognito user with a verified email and no group is
+provisioned as a standard resident with no privileges. Users already assigned
+to a partner or admin group are never inferred or auto-approved: a trusted
+operator must create the matching DynamoDB business/admin profile and approval
+state. Admin access requires both the `PlatformAdmins` Cognito group and an
+active, approved admin profile. Evidence uploads are not implemented; a private
+S3 upload flow is a future enhancement.

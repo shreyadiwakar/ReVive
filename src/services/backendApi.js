@@ -2,11 +2,12 @@ import { loadSession, saveSession } from './storage'
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || ''
 const apiMode = import.meta.env.VITE_API_MODE || ''
-export const backendEnabled = ['local', 'vercel'].includes(apiMode) && !!apiBase
+export const awsApiEnabled = apiMode === 'aws' && !!apiBase
+export const backendEnabled = ['local', 'vercel', 'aws'].includes(apiMode) && !!apiBase
 
 function headers() {
   const session = loadSession()
-  if (apiMode === 'vercel') {
+  if (apiMode === 'vercel' || apiMode === 'aws') {
     return session?.accessToken ? { authorization: `Bearer ${session.accessToken}` } : {}
   }
   const role = ['delivery', 'center', 'admin'].includes(session?.role) ? session.role : 'resident'
@@ -23,19 +24,26 @@ export async function apiRequest(path, { method = 'GET', body } = {}) {
     ...(body ? { body: JSON.stringify(body) } : {}),
   }
   let response = await fetch(requestUrl, requestOptions)
-  if (response.status === 401 && apiMode === 'vercel') {
+  if (response.status === 401 && ['vercel', 'aws'].includes(apiMode)) {
     const session = loadSession()
     if (session?.refreshToken) {
-      const refreshed = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
-        method: 'POST',
-        headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, 'content-type': 'application/json' },
-        body: JSON.stringify({ refresh_token: session.refreshToken }),
-      })
+      const refreshed = apiMode === 'aws'
+        ? await fetch(`${apiBase.replace(/\/$/, '')}/auth/refresh`, {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ refreshToken: session.refreshToken }),
+        })
+        : await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+          method: 'POST',
+          headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, 'content-type': 'application/json' },
+          body: JSON.stringify({ refresh_token: session.refreshToken }),
+        })
       if (refreshed.ok) {
         const tokens = await refreshed.json()
-        const nextSession = { ...session, accessToken: tokens.access_token, refreshToken: tokens.refresh_token, expiresAt: tokens.expires_at }
+        const nextSession = apiMode === 'aws'
+          ? { ...session, ...tokens.session, userId: session.userId, backendUser: true }
+          : { ...session, accessToken: tokens.access_token, refreshToken: tokens.refresh_token, expiresAt: tokens.expires_at }
         saveSession(nextSession)
-        requestOptions.headers = { ...requestOptions.headers, authorization: `Bearer ${tokens.access_token}` }
+        requestOptions.headers = { ...requestOptions.headers, authorization: `Bearer ${nextSession.accessToken}` }
         response = await fetch(requestUrl, requestOptions)
       }
     }
@@ -122,6 +130,7 @@ export const acceptBackendPickup = (id) => apiRequest(`/pickups/${encodeURICompo
 export const updateBackendPickup = (id, status) => apiRequest(`/pickups/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: { status } })
 export const verifyBackendPickup = (id, verifiedWeightKg, note) => apiRequest(`/pickups/${encodeURIComponent(id)}/verify`, { method: 'POST', body: { verifiedWeightKg: Number(verifiedWeightKg), note } })
 export const registerBackendUser = (profile) => apiRequest('/auth/signup', { method: 'POST', body: profile })
+export const confirmBackendUser = (email, code) => apiRequest('/auth/confirm', { method: 'POST', body: { email, code } })
 export const loginBackendUser = (email, password) => apiRequest('/auth/login', { method: 'POST', body: { email, password } })
 export const getBackendAccount = async () => (await apiRequest('/account')).profile
 export const updateBackendAccount = (profile) => apiRequest('/account', { method: 'PATCH', body: profile })

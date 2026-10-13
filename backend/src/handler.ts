@@ -1,6 +1,11 @@
 import {
+  AdminAddUserToGroupCommand,
+  AdminDeleteUserCommand,
+  AdminListGroupsForUserCommand,
+  AdminRemoveUserFromGroupCommand,
   CognitoIdentityProviderClient,
   ConfirmSignUpCommand,
+  GetUserCommand,
   InitiateAuthCommand,
   SignUpCommand,
 } from '@aws-sdk/client-cognito-identity-provider'
@@ -31,6 +36,7 @@ const dynamo = DynamoDBDocumentClient.from(dynamoClient)
 const cognito = new CognitoIdentityProviderClient({ region })
 const tableName = process.env.TABLE_NAME
 const clientId = process.env.USER_POOL_CLIENT_ID
+const userPoolId = process.env.USER_POOL_ID
 const localAuthEnabled = process.env.LOCAL_AUTH === 'true'
 
 const allowedCategories = new Set([
@@ -339,14 +345,40 @@ function hasCognitoGroup(event: APIGatewayProxyEventV2, group: string) {
 
 async function signUp(event: Parameters<APIGatewayProxyHandlerV2>[0]) {
   if (localAuthEnabled) return localSignUp(event)
-  const input = readBody<{ email?: string; password?: string; name?: string }>(event.body, event.isBase64Encoded)
-  const email = input?.email?.trim().toLowerCase()
+  const input = readBody<{
+    email?: string; password?: string; name?: string; role?: string; phone?: string; address?: string; city?: string;
+    centerName?: string; contactPerson?: string; acceptedCategories?: string[]; operatingHours?: string; description?: string;
+    serviceArea?: string; vehicleType?: string; vehicleReg?: string; latitude?: number; longitude?: number;
+  }>(event.body, event.isBase64Encoded)
+  const email = typeof input?.email === 'string' ? input.email.trim().toLowerCase() : ''
   const password = input?.password
-  const name = input?.name?.trim()
-  if (!email || !password || !name || !email.includes('@')) {
-    return json(400, { error: 'Email, password, and name are required.' })
+  const role = input?.role ?? 'user'
+  const rawName = role === 'center' ? input?.centerName : input?.name
+  const name = typeof rawName === 'string' ? rawName.trim() : ''
+  if (!email || typeof password !== 'string' || password.length < 8 || !name || !email.includes('@')) {
+    return json(400, { error: 'Enter a valid email, a name, and a password.' })
   }
-  if (!clientId) return json(500, { error: 'Identity provider is not configured.' })
+  if (!['user', 'delivery', 'center'].includes(role)) {
+    return json(400, { error: 'This account role cannot self-register.' })
+  }
+  if (typeof input?.address !== 'string' || !input.address.trim()
+    || typeof input.city !== 'string' || !input.city.trim()) {
+    return json(400, { error: 'A street address and city are required.' })
+  }
+  if (!validCoordinates(input.latitude, input.longitude)) {
+    return json(400, { error: 'Locate the address on the map before creating an account.' })
+  }
+  if (role === 'center' && (typeof input.contactPerson !== 'string' || !input.contactPerson.trim()
+    || !Array.isArray(input.acceptedCategories) || !input.acceptedCategories.length
+    || input.acceptedCategories.some((category) => !allowedCategories.has(category)))) {
+    return json(400, { error: 'Center contact and supported accepted categories are required.' })
+  }
+  if (role === 'delivery' && (typeof input.serviceArea !== 'string' || !input.serviceArea.trim()
+    || typeof input.vehicleType !== 'string' || !input.vehicleType.trim()
+    || typeof input.vehicleReg !== 'string' || !input.vehicleReg.trim())) {
+    return json(400, { error: 'Delivery service area and vehicle details are required.' })
+  }
+  if (!clientId || !userPoolId) return json(500, { error: 'Identity provider is not configured.' })
 
   try {
     const result = await cognito.send(new SignUpCommand({
@@ -358,10 +390,68 @@ async function signUp(event: Parameters<APIGatewayProxyHandlerV2>[0]) {
         { Name: 'name', Value: name },
       ],
     }))
+    if (!result.UserSub) {
+      try {
+        await cognito.send(new AdminDeleteUserCommand({ UserPoolId: userPoolId, Username: email }))
+      } catch (cleanupError) {
+        console.error('Could not remove the Cognito account without an identifier.', cleanupError)
+      }
+      return json(502, { error: 'Identity provider did not return an account identifier.' })
+    }
+
+    const id = result.UserSub
+    const centerId = role === 'center' ? `center_${randomUUID()}` : undefined
+    const profile = accountProfile({
+      id, email, name, role, phone: input.phone, address: input.address, city: input.city,
+      approvalStatus: role === 'user' ? 'approved' : 'pending', centerId,
+      latitude: input.latitude, longitude: input.longitude,
+      ...(role === 'center' ? {
+        contactPerson: input.contactPerson?.trim(), acceptedCategories: input.acceptedCategories,
+        operatingHours: input.operatingHours?.trim() ?? '', description: input.description?.trim() ?? '',
+        available: false, businessVerified: false,
+      } : {}),
+      ...(role === 'delivery' ? {
+        serviceArea: input.serviceArea?.trim(), vehicleType: input.vehicleType?.trim(),
+        vehicleReg: input.vehicleReg?.trim(), identityVerified: false,
+      } : {}),
+    })
+    const transactionItems: NonNullable<TransactWriteCommandInput['TransactItems']> = [
+      { Put: { TableName: requireTable(), Item: profile, ConditionExpression: 'attribute_not_exists(PK)' } },
+    ]
+    if (role === 'center' && centerId) {
+      transactionItems.push({ Put: {
+        TableName: requireTable(),
+        Item: {
+          PK: `CENTER#${centerId}`, SK: 'PROFILE', id: centerId, ownerId: id,
+          name, city: input.city.trim(), address: input.address.trim(), phone: input.phone?.trim() ?? '',
+          acceptedCategories: input.acceptedCategories!, operatingHours: input.operatingHours?.trim() ?? '',
+          description: input.description?.trim() ?? '', available: false, approvalStatus: 'pending',
+          latitude: input.latitude!, longitude: input.longitude!,
+          GSI1PK: `OWNER#${id}`, GSI1SK: `CENTER#${centerId}`,
+        },
+        ConditionExpression: 'attribute_not_exists(PK)',
+      } })
+    }
+    try {
+      await dynamo.send(new TransactWriteCommand({ TransactItems: transactionItems }))
+    } catch (error) {
+      try {
+        await cognito.send(new AdminDeleteUserCommand({ UserPoolId: userPoolId, Username: email }))
+      } catch (cleanupError) {
+        console.error('Could not remove the unprovisioned Cognito account after profile creation failed.', cleanupError)
+      }
+      if ((error as { name?: string })?.name === 'TransactionCanceledException') {
+        return json(409, { error: 'An account with this email already exists.' })
+      }
+      throw error
+    }
+
     return json(201, {
       status: result.UserConfirmed ? 'confirmed' : 'confirmation_required',
-      userId: result.UserSub,
+      userId: id,
       email,
+      role,
+      approvalStatus: profile.approvalStatus,
     })
   } catch (error) {
     return providerError(error)
@@ -400,13 +490,86 @@ async function login(event: Parameters<APIGatewayProxyHandlerV2>[0]) {
     if (!result.AuthenticationResult) {
       return json(401, { error: 'Additional sign-in verification is required.' })
     }
-    return json(200, {
-      accessToken: result.AuthenticationResult.AccessToken,
+    const accessToken = result.AuthenticationResult.AccessToken
+    if (!accessToken) return json(401, { error: 'Sign-in did not return an access token.' })
+    const user = await cognito.send(new GetUserCommand({ AccessToken: accessToken }))
+    const subject = user.UserAttributes?.find((attribute) => attribute.Name === 'sub')?.Value
+    if (!subject) return json(401, { error: 'Sign-in did not identify the account.' })
+    const profile = await findOrProvisionCognitoProfile(subject, email, user.UserAttributes ?? [])
+    if (!profile || profile.status !== 'active') {
+      return json(403, { error: 'This account is not active or its profile is not provisioned.' })
+    }
+    const session = {
+      ...publicAccount(profile),
+      accessToken,
       idToken: result.AuthenticationResult.IdToken,
       refreshToken: result.AuthenticationResult.RefreshToken,
       expiresIn: result.AuthenticationResult.ExpiresIn,
       tokenType: result.AuthenticationResult.TokenType,
+      backendUser: true,
+    }
+    return json(200, {
+      ...session,
+      session,
     })
+  } catch (error) {
+    return providerError(error)
+  }
+}
+
+async function findOrProvisionCognitoProfile(subject: string, username: string, attributes: { Name?: string; Value?: string }[]) {
+  const key = { PK: `ACCOUNT#${subject}`, SK: 'PROFILE' }
+  const existing = await dynamo.send(new GetCommand({ TableName: requireTable(), Key: key }))
+  if (existing.Item) return existing.Item
+  if (!userPoolId) throw new Error('USER_POOL_ID is not configured.')
+
+  // Only legacy accounts with no Cognito group can safely receive the default resident role.
+  // Partner/admin accounts need operator-provided business data and approval; never infer privilege.
+  const memberships = await cognito.send(new AdminListGroupsForUserCommand({ UserPoolId: userPoolId, Username: username }))
+  if (memberships.Groups?.length) return undefined
+  const value = (name: string) => attributes.find((attribute) => attribute.Name === name)?.Value
+  const email = value('email')?.trim().toLowerCase()
+  if (!email || !value('email_verified') || value('email_verified') !== 'true') return undefined
+  const name = value('name')?.trim() || email.split('@')[0]
+  const profile = accountProfile({
+    id: subject, email, name, role: 'user', phone: value('phone_number'),
+    address: '', city: '', approvalStatus: 'approved',
+  })
+  try {
+    await dynamo.send(new TransactWriteCommand({ TransactItems: [{ Put: {
+      TableName: requireTable(), Item: profile, ConditionExpression: 'attribute_not_exists(PK)',
+    } }] }))
+    return profile
+  } catch (error) {
+    if ((error as { name?: string }).name !== 'TransactionCanceledException') throw error
+    const raced = await dynamo.send(new GetCommand({ TableName: requireTable(), Key: key, ConsistentRead: true }))
+    return raced.Item
+  }
+}
+
+async function refreshSession(event: Parameters<APIGatewayProxyHandlerV2>[0]) {
+  const input = readBody<{ refreshToken?: string }>(event.body, event.isBase64Encoded)
+  if (!input?.refreshToken || !clientId) return json(400, { error: 'A refresh token is required.' })
+  try {
+    const result = await cognito.send(new InitiateAuthCommand({
+      ClientId: clientId,
+      AuthFlow: 'REFRESH_TOKEN_AUTH',
+      AuthParameters: { REFRESH_TOKEN: input.refreshToken },
+    }))
+    const tokens = result.AuthenticationResult
+    if (!tokens?.AccessToken) return json(401, { error: 'Your session has expired. Sign in again.' })
+    const user = await cognito.send(new GetUserCommand({ AccessToken: tokens.AccessToken }))
+    const subject = user.UserAttributes?.find((attribute) => attribute.Name === 'sub')?.Value
+    const email = user.UserAttributes?.find((attribute) => attribute.Name === 'email')?.Value?.toLowerCase()
+    if (!subject || !email) return json(401, { error: 'Could not identify this account. Sign in again.' })
+    const profile = await findOrProvisionCognitoProfile(subject, email, user.UserAttributes ?? [])
+    if (!profile || profile.status !== 'active') return json(403, { error: 'This account is not active or its profile is not provisioned.' })
+    const session = {
+      ...publicAccount(profile), accessToken: tokens.AccessToken, idToken: tokens.IdToken,
+      refreshToken: input.refreshToken, expiresIn: tokens.ExpiresIn, tokenType: tokens.TokenType,
+      backendUser: true,
+    }
+    return json(200, { session })
   } catch (error) {
     return providerError(error)
   }
@@ -682,16 +845,21 @@ async function getOwnedCenter(ownerSub: string) {
     Limit: 2,
   }))
   if (!centers.Items || centers.Items.length !== 1) return null
-  return centers.Items[0]
+  const center = centers.Items[0]
+  const account = await dynamo.send(new GetCommand({
+    TableName: requireTable(), Key: { PK: `ACCOUNT#${ownerSub}`, SK: 'PROFILE' },
+  }))
+  if (account.Item?.role !== 'center' || account.Item.approvalStatus !== 'approved'
+    || account.Item.status !== 'active' || center.ownerId !== ownerSub
+    || center.approvalStatus !== 'approved') return null
+  return center
 }
 
 async function isApprovedAccount(subject: string, role: string) {
   const result = await dynamo.send(new GetCommand({
     TableName: requireTable(), Key: { PK: `ACCOUNT#${subject}`, SK: 'PROFILE' },
   }))
-  // Local workflow identities and Cognito users without a synchronized profile remain usable;
-  // registered local partner accounts must be explicitly approved and active.
-  if (!result.Item) return true
+  if (!result.Item) return false
   return result.Item.role === role && result.Item.approvalStatus === 'approved' && result.Item.status === 'active'
 }
 
@@ -982,6 +1150,20 @@ async function deleteMyComplaint(event: Parameters<APIGatewayProxyHandlerV2>[0],
   }
 }
 
+async function syncPartnerGroup(account: Record<string, unknown>, approvalStatus: unknown, status: unknown) {
+  if (localAuthEnabled) return
+  const group = account.role === 'delivery' ? 'DeliveryPartners'
+    : account.role === 'center' ? 'RecyclingCenters' : null
+  if (!group) return
+  if (!userPoolId || typeof account.email !== 'string' || !account.email) {
+    throw new Error('Cognito partner membership cannot be updated without a user pool and account email.')
+  }
+  const command = approvalStatus === 'approved' && status === 'active'
+    ? new AdminAddUserToGroupCommand({ UserPoolId: userPoolId, Username: account.email, GroupName: group })
+    : new AdminRemoveUserFromGroupCommand({ UserPoolId: userPoolId, Username: account.email, GroupName: group })
+  await cognito.send(command)
+}
+
 async function updateAdminAccount(event: Parameters<APIGatewayProxyHandlerV2>[0]) {
   const id = event.pathParameters?.id
   const input = readBody<{ approvalStatus?: string; status?: string }>(event.body, event.isBase64Encoded)
@@ -1028,6 +1210,8 @@ async function updateAdminAccount(event: Parameters<APIGatewayProxyHandlerV2>[0]
       },
     }))
   }
+
+  await syncPartnerGroup(account, approvalStatus, status)
 
   return json(200, { account: update.Attributes ? publicAccount(update.Attributes) : undefined })
 }
@@ -1133,7 +1317,8 @@ async function getPickup(event: Parameters<APIGatewayProxyHandlerV2>[0], subject
     Key: { PK: `PICKUP#${id}`, SK: 'META' },
   }))
   const item = result.Item
-  const isAssignedDeliveryPartner = Boolean(item && hasCognitoGroup(event, 'DeliveryPartners') && item.deliveryPartnerId === subject)
+  const isAssignedDeliveryPartner = Boolean(item && hasCognitoGroup(event, 'DeliveryPartners')
+    && item.deliveryPartnerId === subject && await isApprovedAccount(subject, 'delivery'))
   const allowed = item && (
     item.residentId === subject ||
     isAssignedDeliveryPartner ||
@@ -1527,6 +1712,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   if (method === 'POST' && path === '/auth/signup') return signUp(event)
   if (method === 'POST' && path === '/auth/confirm') return confirmSignUp(event)
   if (method === 'POST' && path === '/auth/login') return login(event)
+  if (method === 'POST' && path === '/auth/refresh') return refreshSession(event)
   if (method === 'GET' && path === '/centers') {
     try {
       return await listCenters(event)
@@ -1541,7 +1727,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
   try {
     if (path.startsWith('/admin/')) {
-      if (!hasCognitoGroup(event, 'PlatformAdmins')) return json(403, { error: 'An administrator account is required.' })
+      if (!hasCognitoGroup(event, 'PlatformAdmins') || !(await isApprovedAccount(subject, 'admin'))) {
+        return json(403, { error: 'An active administrator account is required.' })
+      }
       if (method === 'GET' && path === '/admin/snapshot') return await getAdminSnapshot()
       if (method === 'POST' && path === '/admin/coupons') return await createAdminCoupon(event)
       if (method === 'PATCH' && path === '/admin/config/points') return await updateAdminPointsConfig(event)
@@ -1549,6 +1737,11 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       if (method === 'PATCH' && /^\/admin\/complaints\/[^/]+$/.test(path)) return await updateAdminComplaint(event)
       if (method === 'PATCH' && /^\/admin\/accounts\/[^/]+$/.test(path)) return await updateAdminAccount(event)
       return json(404, { error: 'Not found.' })
+    }
+    const residentOnlyRoute = (method === 'GET' && (path === '/pickups' || path === '/rewards'))
+      || (method === 'POST' && (path === '/pickups' || path === '/rewards/redeem' || path.endsWith('/cancel')))
+    if (residentOnlyRoute && !(await isApprovedAccount(subject, 'user'))) {
+      return json(403, { error: 'This action is available to active resident accounts only.' })
     }
     if (method === 'GET' && path === '/complaints') return await listMyComplaints(subject)
     if (method === 'POST' && path === '/complaints') return await createComplaint(event, subject)

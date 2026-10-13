@@ -24,6 +24,7 @@ Globals:
         TABLE_NAME: !Ref ReViveTable
         DDB_ENDPOINT: ''
         USER_POOL_CLIENT_ID: !Ref ReViveUserPoolClient
+        USER_POOL_ID: !Ref ReViveUserPool
 
 Resources:
   HealthApiFunction:
@@ -34,7 +35,7 @@ Resources:
         EntryPoints:
           - src/handler.ts
         Target: node24
-        Format: esm
+        Format: cjs
         Minify: true
         Sourcemap: true
     Properties:
@@ -56,6 +57,14 @@ Resources:
               Action:
                 - dynamodb:Query
               Resource: !Sub ${ReViveTable.Arn}/index/*
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminAddUserToGroup
+                - cognito-idp:AdminListGroupsForUser
+                - cognito-idp:AdminRemoveUserFromGroup
+                - cognito-idp:AdminDeleteUser
+              Resource: !GetAtt ReViveUserPool.Arn
       Events:
         ApiHealth:
           Type: HttpApi
@@ -86,6 +95,12 @@ Resources:
           Properties:
             ApiId: !Ref ReViveHttpApi
             Path: /auth/login
+            Method: POST
+        RefreshSession:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /auth/refresh
             Method: POST
         ListCenters:
           Type: HttpApi
@@ -213,6 +228,38 @@ Resources:
             Method: POST
             Auth:
               Authorizer: CognitoAuthorizer
+        ListMyComplaints:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /complaints
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        GetAdminSnapshot:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /admin/snapshot
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+        UpdateAdminPointsConfig:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /admin/config/points
+            Method: PATCH
+            Auth:
+              Authorizer: CognitoAuthorizer
+        UpdateAdminAccount:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /admin/accounts/{id}
+            Method: PATCH
+            Auth:
+              Authorizer: CognitoAuthorizer
         UpdateAdminComplaint:
           Type: HttpApi
           Properties:
@@ -300,6 +347,13 @@ Resources:
     Properties:
       GroupName: RecyclingCenters
       Description: Approved recycling center operators allowed to verify pickups.
+      UserPoolId: !Ref ReViveUserPool
+
+  PlatformAdminsGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: PlatformAdmins
+      Description: Trusted platform administrators. Membership is assigned manually by an AWS operator.
       UserPoolId: !Ref ReViveUserPool
 
   ReViveTable:

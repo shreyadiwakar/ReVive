@@ -7,7 +7,7 @@ import {
   subscribe,
 } from '../services/dataService'
 import { loadSession, saveSession } from '../services/storage'
-import { backendEnabled, getBackendAccount, loginBackendUser, registerBackendUser, updateBackendAccount } from '../services/backendApi'
+import { awsApiEnabled, backendEnabled, confirmBackendUser, getBackendAccount, loginBackendUser, registerBackendUser, updateBackendAccount } from '../services/backendApi'
 import { ROLES } from '../utils/constants'
 
 const AuthContext = createContext(null)
@@ -92,7 +92,11 @@ export function AuthProvider({ children }) {
       if (role === ROLES.ADMIN) return { ok: false, error: 'Administrator accounts are created with the local admin setup command.' }
       try {
         const result = await registerBackendUser({ ...payload, role })
-        const nextSession = { ...result.session, userId: result.session.id, backendUser: true }
+        if (result.status === 'confirmation_required') return { ok: true, confirmationRequired: true, email: result.email }
+        const registeredSession = awsApiEnabled
+          ? (await loginBackendUser(payload.email, payload.password)).session
+          : result.session
+        const nextSession = { ...registeredSession, userId: registeredSession.id, backendUser: true }
         saveSession(nextSession)
         setSession(nextSession)
         return { ok: true, user: nextSession }
@@ -113,6 +117,8 @@ export function AuthProvider({ children }) {
     return result
   }
 
+  const confirmRegistration = (email, code) => confirmBackendUser(email, code)
+
   const updateProfile = async (patch) => {
     if (session?.backendUser) {
       try {
@@ -129,7 +135,7 @@ export function AuthProvider({ children }) {
   }
 
   const value = useMemo(
-    () => ({ session, user, login, logout, registerAndLogin, updateProfile, isAuthenticated: !!session }),
+    () => ({ session, user, login, logout, registerAndLogin, confirmRegistration, updateProfile, isAuthenticated: !!session }),
     [session, user],
   )
 

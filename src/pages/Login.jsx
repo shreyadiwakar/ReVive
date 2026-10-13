@@ -1,12 +1,13 @@
 import { ArrowLeft, LogIn, ShieldAlert } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { roleHomePath, useAuth } from '../context/AuthContext'
 import { ROLES } from '../utils/constants'
 
 export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -41,6 +42,7 @@ export default function Login() {
           </Link>
           <h1 className="mt-5 text-2xl font-bold text-charcoal">Welcome back</h1>
           <p className="mt-1 text-sm text-charcoal/60">Sign in to your ReVive dashboard</p>
+          {location.state?.message && <p role="status" className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-forest">{location.state.message}</p>}
 
           {error && (
             <div className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">
