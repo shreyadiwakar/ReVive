@@ -24,6 +24,15 @@ Residents schedule and track pickups, compare eligible recycling centers, and re
 | Local data | DynamoDB Local and a local HTTP API runner |
 | AWS architecture | AWS SAM, API Gateway HTTP API, Lambda, DynamoDB, Cognito |
 
+## Deploy the complete app without AWS
+
+The Vercel deployment uses Vercel for the Vite frontend and API functions, and
+Supabase for shared data and authentication. Follow
+[`docs/vercel-deployment.md`](docs/vercel-deployment.md) to create the database,
+configure environment variables, and provision the first administrator. The
+Supabase service-role key must stay in Vercel's server-only environment and
+must never use a `VITE_` prefix.
+
 ## Run locally on Windows
 
 Requirements: Node.js with npm, Docker Desktop, and PowerShell.
@@ -84,7 +93,7 @@ Administrators can approve accounts, manage coupon listings, update reward rates
 Run these from `backend/`:
 
 ```powershell
-npm run local:db:check       # Check the local table and seeded center/coupon records
+npm run local:db:check       # Check the local table schema
 npm run local:users:list     # List local account profiles without password hashes
 npm run local:smoke          # Exercise the local pickup-to-reward API workflow
 ```

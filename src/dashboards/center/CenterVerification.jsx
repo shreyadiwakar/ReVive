@@ -1,7 +1,9 @@
 import { ClipboardCheck } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import EmptyState from '../../components/EmptyState'
 import Modal from '../../components/Modal'
+import Pagination from '../../components/Pagination'
 import StatusBadge from '../../components/StatusBadge'
 import { useAppData } from '../../context/AppDataContext'
 import { useAuth } from '../../context/AuthContext'
@@ -17,6 +19,7 @@ export default function CenterVerification() {
   const toast = useToast()
   const centerId = user.centerId || resolveCenterIdForUser(user.id)
   const [target, setTarget] = useState(null)
+  const [pendingPage, setPendingPage] = useState(1)
   const [note, setNote] = useState('')
   const [weight, setWeight] = useState('')
   const [busy, setBusy] = useState(false)
@@ -24,6 +27,10 @@ export default function CenterVerification() {
   const pending = db.pickups
     .filter((p) => p.centerId === centerId && p.status === PICKUP_STATUS.DELIVERED && (backendEnabled || p.verifiedWeightKg != null))
     .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt))
+  const pendingPageSize = 8
+  const pendingTotalPages = Math.max(1, Math.ceil(pending.length / pendingPageSize))
+  const safePendingPage = Math.min(pendingPage, pendingTotalPages)
+  const pendingPageItems = pending.slice((safePendingPage - 1) * pendingPageSize, safePendingPage * pendingPageSize)
 
   const verified = db.pickups
     .filter((p) => p.centerId === centerId && p.status === PICKUP_STATUS.VERIFIED)
@@ -65,14 +72,17 @@ export default function CenterVerification() {
       </div>
 
       <section>
-        <h2 className="text-sm font-semibold text-charcoal">Awaiting verification</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-charcoal">Awaiting verification</h2>
+          <span className="text-xs text-charcoal/50">{pending.length} total</span>
+        </div>
         {pending.length === 0 ? (
           <div className="mt-3">
             <EmptyState icon={ClipboardCheck} title="Nothing to verify" description={backendEnabled ? 'Delivered pickups will appear here.' : 'Confirm received quantity on the requests page first.'} />
           </div>
         ) : (
           <div className="mt-3 grid gap-4">
-            {pending.map((p) => (
+            {pendingPageItems.map((p) => (
               <div key={p.id} className="rounded-2xl bg-white p-5 shadow-sm border border-emerald-100/70">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -91,12 +101,16 @@ export default function CenterVerification() {
                 </button>
               </div>
             ))}
+            <Pagination page={safePendingPage} totalPages={pendingTotalPages} onChange={setPendingPage} />
           </div>
         )}
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold text-charcoal">Recently verified</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-charcoal">Recently verified</h2>
+          <Link to="/center/inventory" className="text-sm font-semibold text-forest hover:underline">View all history</Link>
+        </div>
         {verified.length === 0 ? (
           <p className="mt-3 text-sm text-charcoal/50">No verification records yet.</p>
         ) : (

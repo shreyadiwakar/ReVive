@@ -7,6 +7,7 @@ import {
 import { DynamoDBClient, DescribeTableCommand } from '@aws-sdk/client-dynamodb'
 import {
   DynamoDBDocumentClient,
+  DeleteCommand,
   GetCommand,
   QueryCommand,
   ScanCommand,
@@ -531,6 +532,13 @@ async function redeemCoupon(subject: string, event: Parameters<APIGatewayProxyHa
   const occurredAt = new Date().toISOString()
   const rewardKey = `REWARD#${occurredAt}#${requestId}`
   const description = `Redeemed: ${String(coupon.title)}`
+  const fulfillmentType = coupon.category === 'Cash' ? 'cash_request' : 'demo_voucher'
+  const partnerCode = String(coupon.partner ?? 'REWARD').replace(/[^a-z0-9]/gi, '').slice(0, 8).toUpperCase() || 'REWARD'
+  const requestCode = requestId.replace(/[^a-z0-9]/gi, '').toUpperCase()
+  const fulfillmentCode = coupon.category === 'Cash'
+    ? undefined
+    : `DEMO-${partnerCode}-${requestCode}`
+  const fulfillmentStatus = 'completed'
   try {
     await dynamo.send(new TransactWriteCommand({
       TransactItems: [
@@ -550,6 +558,9 @@ async function redeemCoupon(subject: string, event: Parameters<APIGatewayProxyHa
             Item: {
               PK: `ACCOUNT#${subject}`, SK: rewardKey, id: requestId, residentId: subject,
               type: 'redeem', amount: -pointsCost, description, couponId, couponTitle: coupon.title,
+              fulfillmentType,
+              ...(coupon.category === 'Cash' ? {} : { fulfillmentCode }),
+              fulfillmentStatus,
               createdAt: occurredAt,
             },
             ConditionExpression: 'attribute_not_exists(PK)',
@@ -576,7 +587,16 @@ async function redeemCoupon(subject: string, event: Parameters<APIGatewayProxyHa
         const balance = await dynamo.send(new GetCommand({
           TableName: requireTable(), Key: { PK: `ACCOUNT#${subject}`, SK: 'POINTS#BALANCE' }, ConsistentRead: true,
         }))
-        return json(200, { redeemed: true, duplicate: true, balance: balance.Item?.points ?? 0 })
+        const transaction = existing.Item.rewardKey
+          ? await dynamo.send(new GetCommand({
+            TableName: requireTable(), Key: { PK: `ACCOUNT#${subject}`, SK: existing.Item.rewardKey }, ConsistentRead: true,
+          }))
+          : undefined
+        const { PK: _pk, SK: _sk, ...savedTransaction } = transaction?.Item ?? {}
+        return json(200, {
+          redeemed: true, duplicate: true, balance: balance.Item?.points ?? 0,
+          ...(transaction?.Item ? { transaction: savedTransaction } : {}),
+        })
       }
       const balance = await dynamo.send(new GetCommand({
         TableName: requireTable(), Key: { PK: `ACCOUNT#${subject}`, SK: 'POINTS#BALANCE' }, ConsistentRead: true,
@@ -591,7 +611,10 @@ async function redeemCoupon(subject: string, event: Parameters<APIGatewayProxyHa
     TableName: requireTable(), Key: { PK: `ACCOUNT#${subject}`, SK: 'POINTS#BALANCE' }, ConsistentRead: true,
   }))
   return json(200, { redeemed: true, balance: balance.Item?.points ?? 0, transaction: {
-    id: requestId, type: 'redeem', amount: -pointsCost, description, couponId, createdAt: occurredAt,
+    id: requestId, type: 'redeem', amount: -pointsCost, description, couponId,
+    fulfillmentType,
+    ...(coupon.category === 'Cash' ? {} : { fulfillmentCode }),
+    fulfillmentStatus, createdAt: occurredAt,
   } })
 }
 
@@ -688,7 +711,7 @@ async function listCenterPickups(ownerSub: string) {
 }
 
 async function getAdminSnapshot() {
-  const [accountResult, pickupResult, rewardResult, configResult, pointsResult, couponResult] = await Promise.all([
+  const [accountResult, pickupResult, rewardResult, configResult, pointsResult, couponResult, complaintResult] = await Promise.all([
     dynamo.send(new ScanCommand({
       TableName: requireTable(),
       FilterExpression: 'begins_with(PK, :account) AND SK = :profile',
@@ -719,6 +742,11 @@ async function getAdminSnapshot() {
       FilterExpression: 'begins_with(PK, :coupon) AND SK = :meta',
       ExpressionAttributeValues: { ':coupon': 'COUPON#', ':meta': 'META' },
     })),
+    dynamo.send(new ScanCommand({
+      TableName: requireTable(),
+      FilterExpression: 'begins_with(PK, :complaint) AND SK = :meta',
+      ExpressionAttributeValues: { ':complaint': 'COMPLAINT#', ':meta': 'META' },
+    })),
   ])
   const pointsByUser = new Map((pointsResult.Items ?? []).map((item) => [
     String(item.PK).slice('ACCOUNT#'.length), Number(item.points ?? 0),
@@ -728,11 +756,24 @@ async function getAdminSnapshot() {
     points: pointsByUser.get(String(item.id)) ?? 0,
   }))
   const userNames = new Map(users.map((user) => [user.id, user.name]))
+  const accountRoles = new Map(users.map((user) => [user.id, user.role]))
+  const accountRolesByName = new Map(users.map((user) => [String(user.name ?? '').toLowerCase(), user.role]))
   const rewardTransactions = (rewardResult.Items ?? []).map(({ PK: _pk, SK: _sk, ...item }) => ({
     ...item,
     userId: item.residentId,
     userName: userNames.get(String(item.residentId)) ?? 'Resident',
   }))
+  const complaints = (complaintResult.Items ?? []).map(({ PK: _pk, SK: _sk, ...item }) => {
+    const accountId = String(item.accountId ?? item.userId ?? item.residentId ?? item.submittedBy ?? '')
+    const accountName = String(item.accountName ?? userNames.get(accountId) ?? 'Resident or partner')
+    return {
+      ...item,
+      user: userNames.get(accountId) ?? accountName,
+      accountRole: item.accountRole ?? item.accountType ?? item.role
+        ?? accountRoles.get(accountId) ?? accountRolesByName.get(accountName.toLowerCase()),
+    }
+  }).sort((a, b) => String((b as Record<string, unknown>).createdAt ?? '')
+    .localeCompare(String((a as Record<string, unknown>).createdAt ?? '')))
   const pointsPerKg = { ...pointsPerKgDefaults }
   for (const item of configResult.Items ?? []) {
     const category = String(item.SK).replace('CATEGORY#', '')
@@ -743,6 +784,7 @@ async function getAdminSnapshot() {
     users,
     pickups: (pickupResult.Items ?? []).map(publicPickup),
     rewardTransactions,
+    complaints,
     coupons: (couponResult.Items ?? []).map(({ PK: _pk, SK: _sk, ...coupon }) => coupon)
       .sort((a, b) => Number(a.pointsCost) - Number(b.pointsCost)),
     config: { pointsPerKg },
@@ -842,6 +884,100 @@ async function updateAdminCoupon(event: Parameters<APIGatewayProxyHandlerV2>[0])
     return json(200, { coupon })
   } catch (error) {
     if ((error as { name?: string })?.name === 'ConditionalCheckFailedException') return json(404, { error: 'Coupon not found.' })
+    throw error
+  }
+}
+
+async function createComplaint(event: Parameters<APIGatewayProxyHandlerV2>[0], accountId: string) {
+  const input = readBody<{ subject?: string; details?: string }>(event.body, event.isBase64Encoded)
+  const subject = input?.subject?.trim()
+  const details = input?.details?.trim()
+  if (!subject || subject.length < 3 || subject.length > 120) {
+    return json(400, { error: 'Subject must be between 3 and 120 characters.' })
+  }
+  if (!details || details.length < 5 || details.length > 2000) {
+    return json(400, { error: 'Details must be between 5 and 2,000 characters.' })
+  }
+
+  const accountResult = await dynamo.send(new GetCommand({
+    TableName: requireTable(), Key: { PK: `ACCOUNT#${accountId}`, SK: 'PROFILE' },
+  }))
+  const accountRole = String(accountResult.Item?.role
+    ?? (hasCognitoGroup(event, 'DeliveryPartners') ? 'delivery' : hasCognitoGroup(event, 'RecyclingCenters') ? 'center' : 'user'))
+  const complaint = {
+    id: randomUUID(), accountId,
+    accountName: String(accountResult.Item?.name ?? (hasCognitoGroup(event, 'DeliveryPartners') ? 'Delivery partner' : hasCognitoGroup(event, 'RecyclingCenters') ? 'Recycling center' : 'Resident')),
+    accountRole, subject, details, status: 'open', createdAt: new Date().toISOString(),
+  }
+  await dynamo.send(new TransactWriteCommand({
+    TransactItems: [{ Put: {
+      TableName: requireTable(), Item: { PK: `COMPLAINT#${complaint.id}`, SK: 'META', ...complaint },
+      ConditionExpression: 'attribute_not_exists(PK)',
+    } }],
+  }))
+  return json(201, { complaint: { ...complaint, user: complaint.accountName } })
+}
+
+async function listMyComplaints(accountId: string) {
+  const result = await dynamo.send(new ScanCommand({
+    TableName: requireTable(),
+    FilterExpression: 'begins_with(PK, :complaint) AND SK = :meta AND accountId = :accountId',
+    ExpressionAttributeValues: { ':complaint': 'COMPLAINT#', ':meta': 'META', ':accountId': accountId },
+  }))
+  const items = (result.Items ?? []).map(({ PK: _pk, SK: _sk, ...item }) => ({
+    ...item, userId: accountId,
+  })).sort((a, b) => String((b as Record<string, unknown>).createdAt ?? '')
+    .localeCompare(String((a as Record<string, unknown>).createdAt ?? '')))
+  return json(200, { items })
+}
+
+async function updateAdminComplaint(event: Parameters<APIGatewayProxyHandlerV2>[0]) {
+  const id = event.pathParameters?.id
+  const input = readBody<{ status?: string }>(event.body, event.isBase64Encoded)
+  if (!id || !input || !['open', 'resolved'].includes(String(input.status))) {
+    return json(400, { error: 'Complaint id and a valid open or resolved status are required.' })
+  }
+  const resolved = input.status === 'resolved'
+  try {
+    const result = await dynamo.send(new UpdateCommand({
+      TableName: requireTable(), Key: { PK: `COMPLAINT#${id}`, SK: 'META' },
+      UpdateExpression: resolved
+        ? 'SET #status = :status, resolvedAt = :now, resolvedBy = :admin'
+        : 'SET #status = :status REMOVE resolvedAt, resolvedBy',
+      ConditionExpression: 'attribute_exists(PK)',
+      ExpressionAttributeNames: { '#status': 'status' },
+      ExpressionAttributeValues: resolved
+        ? { ':status': input.status, ':now': new Date().toISOString(), ':admin': authenticatedSubject(event) }
+        : { ':status': input.status },
+      ReturnValues: 'ALL_NEW',
+    }))
+    const { PK: _pk, SK: _sk, ...complaint } = result.Attributes ?? {}
+    return json(200, { complaint })
+  } catch (error) {
+    if ((error as { name?: string })?.name === 'ConditionalCheckFailedException') return json(404, { error: 'Complaint not found.' })
+    throw error
+  }
+}
+
+async function deleteMyComplaint(event: Parameters<APIGatewayProxyHandlerV2>[0], accountId: string) {
+  const id = event.pathParameters?.id
+  if (!id) return json(400, { error: 'Complaint id is required.' })
+  try {
+    await dynamo.send(new DeleteCommand({
+      TableName: requireTable(), Key: { PK: `COMPLAINT#${id}`, SK: 'META' },
+      ConditionExpression: 'attribute_exists(PK) AND accountId = :accountId AND #status = :open',
+      ExpressionAttributeNames: { '#status': 'status' },
+      ExpressionAttributeValues: { ':accountId': accountId, ':open': 'open' },
+    }))
+    return json(200, { deleted: true, id })
+  } catch (error) {
+    if ((error as { name?: string })?.name === 'ConditionalCheckFailedException') {
+      const existing = await dynamo.send(new GetCommand({
+        TableName: requireTable(), Key: { PK: `COMPLAINT#${id}`, SK: 'META' },
+      }))
+      if (!existing.Item || existing.Item.accountId !== accountId) return json(404, { error: 'Complaint not found.' })
+      return json(409, { error: 'Only open complaints can be deleted.' })
+    }
     throw error
   }
 }
@@ -1410,9 +1546,13 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       if (method === 'POST' && path === '/admin/coupons') return await createAdminCoupon(event)
       if (method === 'PATCH' && path === '/admin/config/points') return await updateAdminPointsConfig(event)
       if (method === 'PATCH' && /^\/admin\/coupons\/[^/]+$/.test(path)) return await updateAdminCoupon(event)
+      if (method === 'PATCH' && /^\/admin\/complaints\/[^/]+$/.test(path)) return await updateAdminComplaint(event)
       if (method === 'PATCH' && /^\/admin\/accounts\/[^/]+$/.test(path)) return await updateAdminAccount(event)
       return json(404, { error: 'Not found.' })
     }
+    if (method === 'GET' && path === '/complaints') return await listMyComplaints(subject)
+    if (method === 'POST' && path === '/complaints') return await createComplaint(event, subject)
+    if (method === 'DELETE' && /^\/complaints\/[^/]+$/.test(path)) return await deleteMyComplaint(event, subject)
     if (method === 'GET' && path === '/account') return await getAccountProfile(subject)
     if (method === 'PATCH' && path === '/account') return await updateAccountProfile(event, subject)
     if (method === 'GET' && path === '/rewards') return await getRewards(subject, event)

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
+import Pagination from '../../components/Pagination'
 import StatusBadge from '../../components/StatusBadge'
 import { useAppData } from '../../context/AppDataContext'
 import { useAuth } from '../../context/AuthContext'
@@ -19,6 +20,7 @@ export default function UserMyPickups() {
   const { db, refresh, loading, error: dataError } = useAppData()
   const toast = useToast()
   const [filter, setFilter] = useState('All')
+  const [page, setPage] = useState(1)
   const [cancelTarget, setCancelTarget] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -26,6 +28,11 @@ export default function UserMyPickups() {
     .filter((p) => p.userId === user.id)
     .filter((p) => filter === 'All' || p.status === filter)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+
+  const pageSize = 8
+  const totalPages = Math.max(1, Math.ceil(pickups.length / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const pageItems = pickups.slice((safePage - 1) * pageSize, safePage * pageSize)
 
   const handleCancel = async () => {
     setBusy(true)
@@ -51,7 +58,7 @@ export default function UserMyPickups() {
           <button
             key={f}
             type="button"
-            onClick={() => setFilter(f)}
+            onClick={() => { setFilter(f); setPage(1) }}
             className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
               filter === f ? 'border-forest bg-forest text-white' : 'border-emerald-200 text-charcoal/60 hover:bg-mint-light'
             }`}
@@ -67,7 +74,7 @@ export default function UserMyPickups() {
         </div>
       ) : (
         <div className="mt-6 grid gap-4">
-          {pickups.map((p) => (
+          {pageItems.map((p) => (
             <div key={p.id} className="rounded-2xl bg-white p-5 shadow-sm border border-emerald-100/70">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -94,6 +101,7 @@ export default function UserMyPickups() {
               </div>
             </div>
           ))}
+          <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
         </div>
       )}
 

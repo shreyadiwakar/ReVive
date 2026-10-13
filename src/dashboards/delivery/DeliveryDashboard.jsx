@@ -1,6 +1,7 @@
 import { CheckCircle2, DollarSign, Package, Truck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import EmptyState from '../../components/EmptyState'
+import ReportComplaint from '../../components/ReportComplaint'
 import StatCard from '../../components/StatCard'
 import StatusBadge from '../../components/StatusBadge'
 import { useAppData } from '../../context/AppDataContext'
@@ -81,6 +82,7 @@ export default function DeliveryDashboard() {
           </div>
         )}
       </div>
+      <ReportComplaint />
     </div>
   )
 }

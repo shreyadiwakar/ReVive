@@ -8,6 +8,7 @@
     "local:db:init": "node scripts/create-local-table.mjs",
     "local:db:check": "node scripts/check-local-db.mjs",
     "local:db:drop-test": "node scripts/delete-local-test-table.mjs",
+    "local:cleanup-smoke": "node scripts/cleanup-local-smoke-data.mjs",
     "local:users:list": "node scripts/list-local-users.mjs",
     "local:delivery-history:repair": "node scripts/repair-local-delivery-history.mjs",
     "local:admin:create": "node scripts/create-local-admin.mjs",

@@ -1,20 +1,55 @@
 /**
- * Mock data layer — replace method implementations with API calls for AWS integration.
+ * Local persistence layer used when the backend is disabled.
  */
-import { createSeedDatabase, uid } from '../data/seedData'
 import {
   ACCOUNT_STATUS,
   APPROVAL_STATUS,
   CANCELLABLE_STATUSES,
+  DEFAULT_POINTS_PER_KG,
   PICKUP_STATUS,
   ROLES,
   VEHICLE_WEIGHT_LIMIT_KG,
 } from '../utils/constants'
 import { haversineKm, isValidLocation } from './mapServices'
-import { clearAllReviveData, loadDatabase, saveDatabase } from './storage'
+import { loadDatabase, saveDatabase } from './storage'
 
 let listeners = new Set()
-const seededResidentIds = new Set(['usr_demo_alex', 'usr_seed_2', 'usr_seed_3'])
+const uid = (prefix) => `${prefix}_${crypto.randomUUID()}`
+const seededIds = {
+  users: new Set(['dlv_demo_ravi', 'dlv_demo_pending', 'ctr_demo_greenloop', 'ctr_demo_pending', 'adm_demo', 'usr_demo_alex', 'usr_seed_2', 'usr_seed_3']),
+  centers: new Set(['center_greenloop', 'center_ewaste', 'center_releaf', 'center_glass', 'center_sunrise']),
+  pickups: new Set(['pick_demo_verified', 'pick_demo_verified_2', 'pick_demo_delivered', 'pick_demo_collected', 'pick_demo_active', 'pick_demo_cancelled']),
+  rewardTransactions: new Set(['rtx_1', 'rtx_2', 'rtx_3']),
+  coupons: new Set(['coupon_grocery', 'coupon_amazon', 'coupon_tree', 'coupon_cash', 'coupon_movie']),
+  complaints: new Set(['cmp_1', 'cmp_2', 'cmp_3']),
+}
+
+function createEmptyDatabase() {
+  return {
+    version: 2,
+    users: [], centers: [], pickups: [], rewardTransactions: [], coupons: [], complaints: [],
+    config: { pointsPerKg: { ...DEFAULT_POINTS_PER_KG } },
+    meta: {},
+  }
+}
+
+function removeOldSeedRecords(db) {
+  let changed = false
+  for (const [collection, ids] of Object.entries(seededIds)) {
+    const records = db[collection] || []
+    const clean = records.filter((record) => !ids.has(record.id)
+      && !(collection === 'users' && String(record.email || '').endsWith('@revive.demo')))
+    if (clean.length !== records.length) {
+      db[collection] = clean
+      changed = true
+    }
+  }
+  if (db.meta?.seededAt) {
+    delete db.meta.seededAt
+    changed = true
+  }
+  return changed
+}
 
 export function subscribe(listener) {
   listeners.add(listener)
@@ -28,10 +63,9 @@ function notify() {
 export function getDb() {
   let db = loadDatabase()
   if (!db) {
-    db = createSeedDatabase()
+    db = createEmptyDatabase()
     saveDatabase(db)
-  } else if (db.users?.some((user) => seededResidentIds.has(user.id))) {
-    db.users = db.users.filter((user) => !seededResidentIds.has(user.id))
+  } else if (removeOldSeedRecords(db)) {
     saveDatabase(db)
   }
   return db
@@ -40,14 +74,6 @@ export function getDb() {
 export function persist(db) {
   saveDatabase(db)
   notify()
-}
-
-export function resetDemoData() {
-  clearAllReviveData()
-  const db = createSeedDatabase()
-  saveDatabase(db)
-  notify()
-  return db
 }
 
 export function findUserById(id) {
@@ -109,7 +135,6 @@ export function getCenterByOwnerUserId(userId) {
 export function resolveCenterIdForUser(centerUserId) {
   const owned = getCenterByOwnerUserId(centerUserId)
   if (owned) return owned.id
-  if (centerUserId === 'ctr_demo_greenloop') return 'center_greenloop'
   return null
 }
 
@@ -277,7 +302,7 @@ export function verifyRecycling(pickupId, actorUserId, actorRole, note) {
     if (centerUser?.approvalStatus !== APPROVAL_STATUS.APPROVED) {
       return { ok: false, error: 'Center not approved.' }
     }
-  } else if (actorRole !== ROLES.ADMIN) {
+  } else {
     return { ok: false, error: 'Not authorized to verify.' }
   }
 
@@ -544,25 +569,42 @@ export function redeemCoupon(userId, couponId) {
   const user = db.users.find((u) => u.id === userId)
   const coupon = db.coupons.find((c) => c.id === couponId)
   if (!user || !coupon) return { ok: false, error: 'Invalid redemption.' }
+  if (coupon.active === false) return { ok: false, error: 'This coupon is no longer available.' }
   if ((user.points || 0) < coupon.pointsCost) {
     return { ok: false, error: 'Insufficient points balance.' }
   }
   user.points -= coupon.pointsCost
-  db.rewardTransactions.unshift({
-    id: uid('rtx'),
+  const transactionId = crypto.randomUUID()
+  const isCashRequest = coupon.category === 'Cash'
+  const transaction = {
+    id: transactionId,
     userId,
     type: 'redeem',
     amount: -coupon.pointsCost,
-    description: `Redeemed: ${coupon.title} (simulated)`,
+    description: `Redeemed: ${coupon.title}`,
     couponId: coupon.id,
+    fulfillmentType: isCashRequest ? 'cash_request' : 'demo_voucher',
+    ...(isCashRequest ? { fulfillmentStatus: 'completed' } : {
+      fulfillmentCode: makeDemoFulfillmentCode(coupon, transactionId),
+      fulfillmentStatus: 'completed',
+    }),
     createdAt: new Date().toISOString(),
-  })
+  }
+  db.rewardTransactions.unshift(transaction)
   persist(db)
-  return { ok: true, balance: user.points }
+  return { ok: true, balance: user.points, transaction }
+}
+
+function makeDemoFulfillmentCode(coupon, transactionId) {
+  const prefix = coupon.category === 'Cash'
+    ? 'SIM-CASH'
+    : `DEMO-${String(coupon.partner || 'REWARD').replace(/[^a-z0-9]/gi, '').slice(0, 8).toUpperCase() || 'REWARD'}`
+  const suffix = String(transactionId).replace(/[^a-z0-9]/gi, '').toUpperCase()
+  return `${prefix}-${suffix}`
 }
 
 export function getCoupons() {
-  return getDb().coupons
+  return getDb().coupons.filter((coupon) => coupon.active !== false)
 }
 
 export function getRewardTransactions(userId) {
@@ -581,11 +623,40 @@ export function getComplaints() {
   return getDb().complaints
 }
 
+export function createComplaint(userId, payload = {}) {
+  const db = getDb()
+  const user = db.users.find((item) => item.id === userId)
+  const subject = String(payload.subject || '').trim()
+  const details = String(payload.details || '').trim()
+  if (!user) return { ok: false, error: 'Your account could not be found.' }
+  if (subject.length < 3 || subject.length > 120) return { ok: false, error: 'Subject must be between 3 and 120 characters.' }
+  if (details.length < 5 || details.length > 2000) return { ok: false, error: 'Details must be between 5 and 2,000 characters.' }
+
+  const complaint = {
+    id: uid('cmp'), userId, user: user.name, accountRole: user.role, subject, details,
+    status: 'open', createdAt: new Date().toISOString(),
+  }
+  db.complaints.unshift(complaint)
+  persist(db)
+  return { ok: true, complaint }
+}
+
 export function resolveComplaint(id) {
   const db = getDb()
   const complaint = db.complaints.find((c) => c.id === id)
   if (!complaint) return { ok: false, error: 'Complaint not found.' }
   complaint.status = complaint.status === 'resolved' ? 'open' : 'resolved'
+  persist(db)
+  return { ok: true, complaint }
+}
+
+export function deleteComplaint(id, userId) {
+  const db = getDb()
+  const index = db.complaints.findIndex((item) => item.id === id)
+  if (index < 0) return { ok: false, error: 'Complaint not found.' }
+  if (db.complaints[index].userId !== userId) return { ok: false, error: 'You can only delete your own complaint.' }
+  if (db.complaints[index].status !== 'open') return { ok: false, error: 'Only open complaints can be deleted.' }
+  const [complaint] = db.complaints.splice(index, 1)
   persist(db)
   return { ok: true, complaint }
 }

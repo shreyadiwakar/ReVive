@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import EmptyState from '../../components/EmptyState'
 import Modal from '../../components/Modal'
+import Pagination from '../../components/Pagination'
 import StatusBadge from '../../components/StatusBadge'
 import { useAppData } from '../../context/AppDataContext'
 import { useAuth } from '../../context/AuthContext'
@@ -18,6 +19,7 @@ export default function CenterRequests() {
   const toast = useToast()
   const centerId = user.centerId || resolveCenterIdForUser(user.id)
   const [confirmTarget, setConfirmTarget] = useState(null)
+  const [page, setPage] = useState(1)
   const [weight, setWeight] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -25,6 +27,10 @@ export default function CenterRequests() {
     .filter((p) => p.centerId === centerId)
     .filter((p) => [PICKUP_STATUS.ACCEPTED, PICKUP_STATUS.PICKUP_SCHEDULED, PICKUP_STATUS.COLLECTED, PICKUP_STATUS.DELIVERED].includes(p.status))
     .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt))
+  const pageSize = 10
+  const totalPages = Math.max(1, Math.ceil(requests.length / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const pageRequests = requests.slice((safePage - 1) * pageSize, safePage * pageSize)
 
   const openConfirm = (p) => {
     setConfirmTarget(p)
@@ -72,7 +78,7 @@ export default function CenterRequests() {
               </tr>
             </thead>
             <tbody>
-              {requests.map((p) => (
+              {pageRequests.map((p) => (
                 <tr key={p.id} className="border-b border-emerald-50 last:border-0">
                   <td className="px-5 py-3 text-charcoal">{p.userName}</td>
                   <td className="px-5 py-3 text-charcoal/70">{p.wasteCategory}</td>
@@ -96,6 +102,9 @@ export default function CenterRequests() {
               ))}
             </tbody>
           </table>
+          <div className="px-5 pb-5">
+            <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
+          </div>
         </div>
       )}
 

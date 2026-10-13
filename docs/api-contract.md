@@ -36,8 +36,8 @@ The center directory is public and returns available centers. `city` and
 | `GET /centers?city=Bengaluru&category=Plastic&limit=25` | — | `200 { "items": [...] }` |
 
 Each center includes `id`, `name`, `city`, `address`, `acceptedCategories`,
-`operatingHours`, `rating`, `available`, and `description`. Local setup seeds
-the demo centers; the unavailable demo center is omitted from directory results.
+`operatingHours`, `rating`, `available`, and `description`. The directory shows
+centers that have registered and been approved.
 
 ## Pickups
 

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import ApprovalBadge from '../../components/ApprovalBadge'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
+import Pagination from '../../components/Pagination'
 import { useAppData } from '../../context/AppDataContext'
 import { useToast } from '../../context/ToastContext'
 import { setAccountStatus, setApprovalStatus } from '../../services/dataService'
@@ -14,10 +15,15 @@ export default function AdminDeliveryPartners() {
   const { db, refresh, error, loading } = useAppData()
   const toast = useToast()
   const [action, setAction] = useState(null)
+  const [page, setPage] = useState(1)
 
   const partners = db.users
     .filter((u) => u.role === ROLES.DELIVERY)
     .sort((a) => (a.approvalStatus === APPROVAL_STATUS.PENDING ? -1 : 1))
+  const pageSize = 8
+  const totalPages = Math.max(1, Math.ceil(partners.length / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const pagePartners = partners.slice((safePage - 1) * pageSize, safePage * pageSize)
 
   const runAction = async () => {
     try {
@@ -51,7 +57,7 @@ export default function AdminDeliveryPartners() {
         </div>
       ) : (
         <div className="mt-6 grid gap-4">
-          {partners.map((p) => (
+          {pagePartners.map((p) => (
             <div key={p.id} className="rounded-2xl bg-white p-5 shadow-sm border border-emerald-100/70">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -90,6 +96,7 @@ export default function AdminDeliveryPartners() {
               </div>
             </div>
           ))}
+          <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
         </div>
       )}
 

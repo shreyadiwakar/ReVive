@@ -18,10 +18,10 @@ npm run local:db:init
 npm run local:db:check
 ```
 
-`local:db:init` creates `revive-local` if missing and seeds the center directory
-and coupon catalog. Existing coupon records are preserved. It also preserves a
-center record that already has an owner. The database runs in memory and is
-cleared by `docker compose down`.
+`local:db:init` creates the empty `revive-local` table if it is missing. The
+directory and coupon catalog are populated only through account registration
+and admin actions. The database runs in memory and is cleared by
+`docker compose down`.
 
 ### 2. Create your local administrator
 
@@ -82,11 +82,6 @@ in `.env.local`. Restart Vite after changing that file.
    listings. Deactivation hides a coupon from residents while preserving its
    past redemption records.
 
-If the resident already selected the seeded **CrystalCycle Glass Works**, a
-center application with that exact facility name and city can claim that
-unowned local center record. After admin approval, the center account can see
-and verify its pickups.
-
 To view account profiles stored in the local table (password hashes are never
 included):
 
@@ -97,12 +92,12 @@ npm run local:users:list
 
 ## Local verification commands
 
-With DynamoDB Local running, `npm run local:db:check` checks the schema and
-seeded center data. With the API running, `npm run local:smoke` exercises
-resident, delivery, center, and admin APIs through approval, pickup delivery,
-verification, and reward issuance. The smoke runner creates uniquely named test
-accounts and a pickup in the local table; remove them by stopping DynamoDB Local
-with `docker compose down` only if you are ready to clear all local data.
+With DynamoDB Local running, `npm run local:db:check` checks the table schema.
+With the API running, `npm run local:smoke` exercises resident, delivery,
+center, and admin APIs through approval, pickup delivery, verification, and
+reward issuance. It removes the uniquely named test accounts and linked records
+when it finishes. `npm run local:cleanup-smoke` removes any such records left by
+an earlier run.
 
 ## AWS deployment status
 

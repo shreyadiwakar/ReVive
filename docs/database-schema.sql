@@ -153,6 +153,6 @@ CREATE INDEX pickup_events_history ON pickup_events(pickup_id, occurred_at);
 CREATE INDEX reward_account_history ON reward_transactions(account_id, created_at DESC);
 CREATE INDEX complaints_status_created ON complaints(status, created_at DESC);
 
--- Seed waste_categories with the app's categories: Plastic, Paper, Glass, Metal,
--- E-waste, Organic, Other. Store IDs and corresponding point rates in points_rates.
+-- Supported waste categories: Plastic, Paper, Glass, Metal, E-waste, Organic,
+-- and Other. Store category IDs and point rates in points_rates.
 -- Use transactions for state transitions, verification + ledger credit, and redemption.

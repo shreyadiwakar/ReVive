@@ -1,6 +1,8 @@
 import { Archive } from 'lucide-react'
+import { useState } from 'react'
 import CategoryPieChart from '../../components/CategoryPieChart'
 import EmptyState from '../../components/EmptyState'
+import Pagination from '../../components/Pagination'
 import StatCard from '../../components/StatCard'
 import { useAppData } from '../../context/AppDataContext'
 import { useAuth } from '../../context/AuthContext'
@@ -12,12 +14,17 @@ import { PICKUP_STATUS } from '../../utils/constants'
 export default function CenterInventory() {
   const { user } = useAuth()
   const { db, loading, error } = useAppData()
+  const [page, setPage] = useState(1)
   const centerId = user.centerId || resolveCenterIdForUser(user.id)
   const remoteRecords = db.pickups.filter((p) => p.centerId === centerId && p.status === PICKUP_STATUS.VERIFIED)
   const inventory = backendEnabled
     ? { records: remoteRecords, totals: Object.entries(remoteRecords.reduce((acc, p) => ({ ...acc, [p.wasteCategory]: (acc[p.wasteCategory] || 0) + Number(p.verifiedWeightKg || 0) }), {})).map(([category, kg]) => ({ category, kg })), totalKg: remoteRecords.reduce((sum, p) => sum + Number(p.verifiedWeightKg || 0), 0) }
     : getCenterInventory(centerId)
   const { records, totals, totalKg } = inventory
+  const pageSize = 10
+  const totalPages = Math.max(1, Math.ceil(records.length / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const pageRecords = records.slice((safePage - 1) * pageSize, safePage * pageSize)
 
   return (
     <div>
@@ -53,7 +60,7 @@ export default function CenterInventory() {
               </tr>
             </thead>
             <tbody>
-              {records.map((p) => (
+              {pageRecords.map((p) => (
                 <tr key={p.id} className="border-b border-emerald-50 last:border-0">
                   <td className="px-5 py-3 font-mono text-xs text-charcoal/50">{p.id}</td>
                   <td className="px-5 py-3 text-charcoal">{p.userName}</td>
@@ -64,6 +71,9 @@ export default function CenterInventory() {
               ))}
             </tbody>
           </table>
+          <div className="px-5 pb-5">
+            <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
+          </div>
         </div>
       )}
     </div>

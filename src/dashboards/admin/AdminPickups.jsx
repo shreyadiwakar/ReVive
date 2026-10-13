@@ -1,30 +1,22 @@
 import { Package } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
 import Modal from '../../components/Modal'
 import Pagination from '../../components/Pagination'
 import PickupTimeline from '../../components/PickupTimeline'
 import StatusBadge from '../../components/StatusBadge'
 import { useAppData } from '../../context/AppDataContext'
-import { useAuth } from '../../context/AuthContext'
-import { useToast } from '../../context/ToastContext'
-import { verifyRecycling } from '../../services/dataService'
-import { PICKUP_STATUS, ROLES } from '../../utils/constants'
+import { PICKUP_STATUS } from '../../utils/constants'
 import { formatDate, formatKg } from '../../utils/format'
-import { backendEnabled } from '../../services/backendApi'
 
 const FILTERS = ['All', ...Object.values(PICKUP_STATUS)]
 const PAGE_SIZE = 8
 
 export default function AdminPickups() {
-  const { user } = useAuth()
-  const { db, refresh } = useAppData()
-  const toast = useToast()
+  const { db } = useAppData()
   const [filter, setFilter] = useState('All')
   const [page, setPage] = useState(1)
   const [viewing, setViewing] = useState(null)
-  const [verifyTarget, setVerifyTarget] = useState(null)
 
   const filtered = useMemo(() => {
     return db.pickups
@@ -35,12 +27,11 @@ export default function AdminPickups() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  const handleVerify = () => {
-    const result = verifyRecycling(verifyTarget.id, user.id, ROLES.ADMIN, 'Verified by platform admin')
-    if (!result.ok) toast.error(result.error)
-    else toast.success(`Verified — ${result.pickup.pointsAwarded} points credited.`)
-    setVerifyTarget(null)
-    refresh()
+  const getDeliveryPartnerName = (pickup) => {
+    if (!pickup.deliveryPartnerId) return 'Unassigned'
+
+    const partner = db.users.find((u) => String(u.id) === String(pickup.deliveryPartnerId))
+    return partner?.name || pickup.deliveryPartnerName || 'Assigned partner'
   }
 
   return (
@@ -75,6 +66,7 @@ export default function AdminPickups() {
                 <th className="px-5 py-3">Request</th>
                 <th className="px-5 py-3">Resident</th>
                 <th className="px-5 py-3">Center</th>
+                <th className="px-5 py-3">Delivery partner</th>
                 <th className="px-5 py-3">Weight</th>
                 <th className="px-5 py-3">Status</th>
                 <th className="px-5 py-3">Scheduled</th>
@@ -87,6 +79,7 @@ export default function AdminPickups() {
                   <td className="px-5 py-3 font-mono text-xs text-charcoal/50">{p.id}</td>
                   <td className="px-5 py-3 text-charcoal">{p.userName}</td>
                   <td className="px-5 py-3 text-charcoal/70">{p.centerName}</td>
+                  <td className="px-5 py-3 text-charcoal/70">{getDeliveryPartnerName(p)}</td>
                   <td className="px-5 py-3 text-charcoal/70">{formatKg(p.verifiedWeightKg ?? p.quantityKg)}</td>
                   <td className="px-5 py-3"><StatusBadge status={p.status} /></td>
                   <td className="px-5 py-3 text-charcoal/50">{formatDate(p.scheduledAt)}</td>
@@ -95,11 +88,6 @@ export default function AdminPickups() {
                       <button type="button" onClick={() => setViewing(p)} className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-charcoal hover:bg-mint-light">
                         View
                       </button>
-                      {!backendEnabled && p.status === PICKUP_STATUS.DELIVERED && p.verifiedWeightKg != null && (
-                        <button type="button" onClick={() => setVerifyTarget(p)} className="rounded-lg bg-forest px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest-dark">
-                          Verify
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -116,14 +104,6 @@ export default function AdminPickups() {
         {viewing && <PickupTimeline pickup={viewing} />}
       </Modal>
 
-      <ConfirmDialog
-        open={!!verifyTarget}
-        title="Verify this pickup?"
-        message="As an administrator, this will credit reward points on behalf of the recycling center. Use this only when the center cannot verify directly."
-        confirmLabel="Verify & credit points"
-        onConfirm={handleVerify}
-        onCancel={() => setVerifyTarget(null)}
-      />
     </div>
   )
 }

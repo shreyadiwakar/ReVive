@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
 
 const baseUrl = process.env.LOCAL_API_URL ?? 'http://127.0.0.1:3001'
 const signupHeaders = { 'x-local-role': 'resident' }
@@ -31,11 +32,6 @@ try {
   await call('/health')
   const database = await call('/health/db')
   if (database.database !== 'connected') throw new Error('DynamoDB health endpoint did not report connected.')
-  const directory = await call('/centers')
-  if (!directory.items?.some((center) => center.id === 'center_greenloop')) {
-    throw new Error('GreenLoop is missing from the seeded center directory; run npm run local:db:init.')
-  }
-
   const unique = randomUUID()
   const centerEmail = `local-smoke-center-${unique}@example.test`
   const centerSignup = await call('/auth/signup', {
@@ -183,4 +179,13 @@ try {
 } catch (error) {
   console.error(`Local pickup-to-reward smoke check failed: ${error.message}`)
   process.exitCode = 1
+} finally {
+  const cleanup = spawnSync(process.execPath, [new URL('./cleanup-local-smoke-data.mjs', import.meta.url).pathname], {
+    env: process.env,
+    stdio: 'inherit',
+  })
+  if (cleanup.status !== 0) {
+    console.error('Could not remove local smoke-test records.')
+    process.exitCode = 1
+  }
 }

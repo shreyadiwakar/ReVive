@@ -46,6 +46,8 @@ Resources:
                 - dynamodb:DescribeTable
                 - dynamodb:GetItem
                 - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:DeleteItem
                 - dynamodb:Query
                 - dynamodb:Scan
                 - dynamodb:TransactWriteItems
@@ -203,6 +205,30 @@ Resources:
             Method: POST
             Auth:
               Authorizer: CognitoAuthorizer
+        CreateComplaint:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /complaints
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+        UpdateAdminComplaint:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /admin/complaints/{id}
+            Method: PATCH
+            Auth:
+              Authorizer: CognitoAuthorizer
+        DeleteMyComplaint:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ReViveHttpApi
+            Path: /complaints/{id}
+            Method: DELETE
+            Auth:
+              Authorizer: CognitoAuthorizer
         ListCenterPickups:
           Type: HttpApi
           Properties:
@@ -232,6 +258,7 @@ Resources:
           - GET
           - POST
           - PATCH
+          - DELETE
           - OPTIONS
 
   ReViveUserPool:

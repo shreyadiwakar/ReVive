@@ -1,5 +1,7 @@
 import { DollarSign } from 'lucide-react'
+import { useState } from 'react'
 import EmptyState from '../../components/EmptyState'
+import Pagination from '../../components/Pagination'
 import SimulatedBanner from '../../components/SimulatedBanner'
 import StatCard from '../../components/StatCard'
 import { useAppData } from '../../context/AppDataContext'
@@ -14,6 +16,7 @@ const formatRupees = (amount) => `${String.fromCodePoint(0x20B9)}${Number(amount
 export default function DeliveryEarnings() {
   const { user } = useAuth()
   const { db, loading, error } = useAppData()
+  const [page, setPage] = useState(1)
   const partnerPickups = db.pickups.filter((pickup) => pickup.deliveryPartnerId === user.id).map((pickup) => {
     if (pickup.earningDistanceKm != null || pickup.status !== 'Recycling Verified') return pickup
     const center = db.centers.find((item) => item.id === pickup.centerId)
@@ -27,6 +30,9 @@ export default function DeliveryEarnings() {
   const verifiedPickups = partnerPickups
     .filter((pickup) => breakdownByPickup.has(pickup.id))
     .sort((a, b) => new Date(b.pointsAwardedAt || b.updatedAt || b.createdAt) - new Date(a.pointsAwardedAt || a.updatedAt || a.createdAt))
+  const pageSize = 10
+  const totalPages = Math.max(1, Math.ceil(verifiedPickups.length / pageSize))
+  const pagePickups = verifiedPickups.slice((Math.min(page, totalPages) - 1) * pageSize, Math.min(page, totalPages) * pageSize)
   return (
     <div>
       <h1 className="text-2xl font-bold text-charcoal">Earnings</h1>
@@ -58,7 +64,7 @@ export default function DeliveryEarnings() {
               </tr>
             </thead>
             <tbody>
-              {verifiedPickups.map((pickup) => {
+              {pagePickups.map((pickup) => {
                 const item = breakdownByPickup.get(pickup.id)
                 return (
                   <tr key={pickup.id} className="border-b border-emerald-50 last:border-0 align-top">
@@ -78,6 +84,9 @@ export default function DeliveryEarnings() {
               })}
             </tbody>
           </table>
+          <div className="px-5 pb-5">
+            <Pagination page={Math.min(page, totalPages)} totalPages={totalPages} onChange={setPage} />
+          </div>
         </div>
       )}
 

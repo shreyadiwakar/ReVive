@@ -9,6 +9,7 @@ import { backendEnabled, createBackendPickup } from '../../services/backendApi'
 import { WASTE_CATEGORIES } from '../../utils/constants'
 import AddressLocationField from '../../components/AddressLocationField'
 import CenterMap from '../../components/CenterMap'
+import Pagination from '../../components/Pagination'
 import { getDrivingDistances, haversineKm, isValidLocation } from '../../services/mapServices'
 
 const STEPS = ['Waste details', 'Pickup info', 'Choose center', 'Review']
@@ -25,6 +26,7 @@ export default function UserSchedulePickup() {
   const [pickupLocation, setPickupLocation] = useState({ latitude: null, longitude: null })
   const [centerDistances, setCenterDistances] = useState(new Map())
   const [routing, setRouting] = useState(false)
+  const [centerPage, setCenterPage] = useState(1)
 
   const [form, setForm] = useState({
     wasteCategory: WASTE_CATEGORIES[0],
@@ -49,6 +51,10 @@ export default function UserSchedulePickup() {
     center.available && center.acceptedCategories?.includes(form.wasteCategory)), [db.centers, form.wasteCategory])
   const rankedCenters = useMemo(() => [...matchingCenters].sort((a, b) =>
     (centerDistances.get(a.id)?.km ?? Infinity) - (centerDistances.get(b.id)?.km ?? Infinity)), [matchingCenters, centerDistances])
+  const centersPerPage = 5
+  const centerPageCount = Math.max(1, Math.ceil(rankedCenters.length / centersPerPage))
+  const safeCenterPage = Math.min(centerPage, centerPageCount)
+  const rankedPageCenters = rankedCenters.slice((safeCenterPage - 1) * centersPerPage, safeCenterPage * centersPerPage)
   const recommendedCenter = rankedCenters.find((center) => centerDistances.has(center.id))
   const selectedCenter = matchingCenters.find((c) => c.id === form.centerId) || recommendedCenter
   const estimatedPoints = calculateEstimatedPoints(form.wasteCategory, Number(form.quantityKg || 0))
@@ -245,7 +251,7 @@ export default function UserSchedulePickup() {
             {matchingCenters.length === 0 && (
               <p className="text-sm text-charcoal/60">No centers currently accept {form.wasteCategory}. Try a different category.</p>
             )}
-            {rankedCenters.map((c) => (
+            {rankedPageCenters.map((c) => (
               <button
                 key={c.id}
                 type="button"
@@ -269,6 +275,7 @@ export default function UserSchedulePickup() {
                 ) : <p className="mt-1 text-sm font-medium text-amber-800">Distance unavailable: this center needs a saved map pin.</p>}
               </button>
             ))}
+            <Pagination page={safeCenterPage} totalPages={centerPageCount} onChange={setCenterPage} />
           </div>
         )}
 

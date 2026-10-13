@@ -1,10 +1,14 @@
-import { loadSession } from './storage'
+import { loadSession, saveSession } from './storage'
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || ''
-export const backendEnabled = import.meta.env.VITE_API_MODE === 'local' && !!apiBase
+const apiMode = import.meta.env.VITE_API_MODE || ''
+export const backendEnabled = ['local', 'vercel'].includes(apiMode) && !!apiBase
 
 function headers() {
   const session = loadSession()
+  if (apiMode === 'vercel') {
+    return session?.accessToken ? { authorization: `Bearer ${session.accessToken}` } : {}
+  }
   const role = ['delivery', 'center', 'admin'].includes(session?.role) ? session.role : 'resident'
   const result = { 'x-local-role': role }
   if (session?.userId) result['x-local-user'] = session.userId
@@ -12,11 +16,30 @@ function headers() {
 }
 
 export async function apiRequest(path, { method = 'GET', body } = {}) {
-  const response = await fetch(`${apiBase.replace(/\/$/, '')}${path}`, {
+  const requestUrl = `${apiBase.replace(/\/$/, '')}${path}`
+  const requestOptions = {
     method,
     headers: { ...headers(), ...(body ? { 'content-type': 'application/json' } : {}) },
     ...(body ? { body: JSON.stringify(body) } : {}),
-  })
+  }
+  let response = await fetch(requestUrl, requestOptions)
+  if (response.status === 401 && apiMode === 'vercel') {
+    const session = loadSession()
+    if (session?.refreshToken) {
+      const refreshed = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, 'content-type': 'application/json' },
+        body: JSON.stringify({ refresh_token: session.refreshToken }),
+      })
+      if (refreshed.ok) {
+        const tokens = await refreshed.json()
+        const nextSession = { ...session, accessToken: tokens.access_token, refreshToken: tokens.refresh_token, expiresAt: tokens.expires_at }
+        saveSession(nextSession)
+        requestOptions.headers = { ...requestOptions.headers, authorization: `Bearer ${tokens.access_token}` }
+        response = await fetch(requestUrl, requestOptions)
+      }
+    }
+  }
   let data = {}
   try { data = await response.json() } catch { /* response can be empty */ }
   if (!response.ok) {
@@ -60,13 +83,14 @@ export async function loadBackendSnapshot(currentDb, session) {
       users: data.users || [],
       pickups: (data.pickups || []).map((item) => normalizePickup(item, session)),
       rewardTransactions: data.rewardTransactions || [],
+      complaints: data.complaints || [],
       coupons: data.coupons || coupons,
       config: data.config || currentDb.config,
     }
   }
 
   if (session.role === 'user') {
-    const [pickupsData, rewardsData] = await Promise.all([apiRequest('/pickups'), apiRequest('/rewards')])
+    const [pickupsData, rewardsData, complaintsData] = await Promise.all([apiRequest('/pickups'), apiRequest('/rewards'), apiRequest('/complaints')])
     return {
       ...currentDb,
       centers,
@@ -76,16 +100,17 @@ export async function loadBackendSnapshot(currentDb, session) {
       rewardTransactions: (rewardsData.transactions || []).map((item) => ({
         ...item, userId: item.residentId, createdAt: item.createdAt,
       })),
+      complaints: complaintsData.items || [],
     }
   }
   if (session.role === 'delivery') {
-    const [available, mine] = await Promise.all([apiRequest('/pickups/available'), apiRequest('/pickups/mine')])
+    const [available, mine, complaintsData] = await Promise.all([apiRequest('/pickups/available'), apiRequest('/pickups/mine'), apiRequest('/complaints')])
     const pickups = [...(mine.items || []), ...(available.items || [])]
-    return { ...currentDb, centers, coupons, pickups: [...new Map(pickups.map((p) => [p.id, normalizePickup(p, session)])).values()] }
+    return { ...currentDb, centers, coupons, complaints: complaintsData.items || [], pickups: [...new Map(pickups.map((p) => [p.id, normalizePickup(p, session)])).values()] }
   }
   if (session.role === 'center') {
-    const data = await apiRequest('/center/pickups')
-    return { ...currentDb, centers, coupons, pickups: (data.items || []).map((item) => normalizePickup(item, session)) }
+    const [data, complaintsData] = await Promise.all([apiRequest('/center/pickups'), apiRequest('/complaints')])
+    return { ...currentDb, centers, coupons, complaints: complaintsData.items || [], pickups: (data.items || []).map((item) => normalizePickup(item, session)) }
   }
   return { ...currentDb, centers }
 }
@@ -103,6 +128,9 @@ export const updateBackendAccount = (profile) => apiRequest('/account', { method
 export const updateBackendAdminAccount = (id, patch) => apiRequest(`/admin/accounts/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch })
 export const createBackendCoupon = (payload) => apiRequest('/admin/coupons', { method: 'POST', body: payload })
 export const updateBackendCoupon = (id, patch) => apiRequest(`/admin/coupons/${encodeURIComponent(id)}`, { method: 'PATCH', body: patch })
+export const createBackendComplaint = (payload) => apiRequest('/complaints', { method: 'POST', body: payload })
+export const updateBackendComplaint = (id, status) => apiRequest(`/admin/complaints/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status } })
+export const deleteBackendComplaint = (id) => apiRequest(`/complaints/${encodeURIComponent(id)}`, { method: 'DELETE' })
 export const updateBackendPointsConfig = (pointsPerKg) => apiRequest('/admin/config/points', { method: 'PATCH', body: { pointsPerKg } })
 export const redeemBackendCoupon = (couponId, requestId = crypto.randomUUID()) => apiRequest('/rewards/redeem', {
   method: 'POST', body: { couponId, requestId },

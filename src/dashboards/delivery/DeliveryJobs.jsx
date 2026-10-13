@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
+import Pagination from '../../components/Pagination'
 import StatusBadge from '../../components/StatusBadge'
 import { useAppData } from '../../context/AppDataContext'
 import { useAuth } from '../../context/AuthContext'
@@ -21,6 +22,8 @@ export default function DeliveryJobs() {
   const [acceptTarget, setAcceptTarget] = useState(null)
   const [busy, setBusy] = useState(false)
   const [jobDistances, setJobDistances] = useState(new Map())
+  const [activePage, setActivePage] = useState(1)
+  const [availablePage, setAvailablePage] = useState(1)
   const { loading, error } = useAppData()
   const vehicleLimit = VEHICLE_WEIGHT_LIMIT_KG[user.vehicleType]
 
@@ -28,6 +31,11 @@ export default function DeliveryJobs() {
   const myActive = db.pickups
     .filter((p) => p.deliveryPartnerId === user.id && ![PICKUP_STATUS.VERIFIED, PICKUP_STATUS.CANCELLED].includes(p.status))
     .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt))
+  const pageSize = 8
+  const activePages = Math.max(1, Math.ceil(myActive.length / pageSize))
+  const availablePages = Math.max(1, Math.ceil(available.length / pageSize))
+  const activePageItems = myActive.slice((Math.min(activePage, activePages) - 1) * pageSize, Math.min(activePage, activePages) * pageSize)
+  const availablePageItems = available.slice((Math.min(availablePage, availablePages) - 1) * pageSize, Math.min(availablePage, availablePages) * pageSize)
   const distanceFromBase = (pickup) => {
     const pickupLocation = { latitude: pickup.pickupLatitude, longitude: pickup.pickupLongitude }
     return isValidLocation(user) && isValidLocation(pickupLocation)
@@ -102,7 +110,7 @@ export default function DeliveryJobs() {
           </div>
         ) : (
           <div className="mt-3 grid gap-4">
-            {myActive.map((p) => (
+            {activePageItems.map((p) => (
               <div key={p.id} className="rounded-2xl bg-white p-5 shadow-sm border border-emerald-100/70">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -120,6 +128,7 @@ export default function DeliveryJobs() {
                 </Link>
               </div>
             ))}
+            <Pagination page={Math.min(activePage, activePages)} totalPages={activePages} onChange={setActivePage} />
           </div>
         )}
       </section>
@@ -132,7 +141,7 @@ export default function DeliveryJobs() {
           </div>
         ) : (
           <div className="mt-3 grid gap-4">
-            {available.map((p) => (
+            {availablePageItems.map((p) => (
               <div key={p.id} className="rounded-2xl bg-white p-5 shadow-sm border border-emerald-100/70">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -155,6 +164,7 @@ export default function DeliveryJobs() {
                 {vehicleLimit && Number(p.quantityKg) > vehicleLimit && <p className="mt-3 text-sm text-amber-800">This pickup is over your vehicle's {vehicleLimit} kg capacity.</p>}
               </div>
             ))}
+            <Pagination page={Math.min(availablePage, availablePages)} totalPages={availablePages} onChange={setAvailablePage} />
           </div>
         )}
       </section>

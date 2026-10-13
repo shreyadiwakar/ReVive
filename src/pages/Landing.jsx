@@ -1,5 +1,4 @@
 import {
-  Award,
   Clock,
   Factory,
   Gift,
@@ -15,7 +14,6 @@ import { Link } from 'react-router-dom'
 import Footer from '../components/Footer'
 import Navbar from '../components/Navbar'
 import { roleHomePath, useAuth } from '../context/AuthContext'
-import { getCoupons } from '../services/dataService'
 import { useAppData } from '../context/AppDataContext'
 
 const STEPS = [
@@ -43,20 +41,13 @@ const BENEFITS = [
   },
 ]
 
-const STATS = [
-  { label: 'Residents onboarded', value: '12,480+' },
-  { label: 'Waste diverted from landfills', value: '892 tonnes' },
-  { label: 'Verified recycling centers', value: '47' },
-  { label: 'Reward points issued', value: '4.45M' },
-]
-
 export default function Landing() {
   const { db } = useAppData()
   const { user } = useAuth()
   const residentAction = user ? roleHomePath(user.role) : '/register/user'
   const partnerAction = user ? roleHomePath(user.role) : '/register'
   const centers = db.centers.filter((c) => c.available).slice(0, 3)
-  const coupons = getCoupons().slice(0, 4)
+  const coupons = db.coupons.filter((coupon) => coupon.active !== false).slice(0, 4)
 
   return (
     <div className="min-h-screen bg-white">
@@ -91,36 +82,17 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="relative mx-auto grid w-full max-w-sm grid-cols-2 gap-4">
-            <div className="col-span-2 rounded-3xl bg-forest p-6 text-white shadow-lg">
-              <Leaf size={28} />
-              <p className="mt-4 text-3xl font-bold">892 t</p>
-              <p className="text-sm text-white/80">Waste diverted from landfills</p>
-            </div>
-            <div className="rounded-2xl bg-white p-5 shadow-md border border-emerald-100">
-              <Recycle className="text-forest" size={22} />
-              <p className="mt-3 text-xl font-bold text-charcoal">4.45M</p>
-              <p className="text-xs text-charcoal/60">Points earned</p>
-            </div>
-            <div className="rounded-2xl bg-white p-5 shadow-md border border-emerald-100">
-              <Factory className="text-forest" size={22} />
-              <p className="mt-3 text-xl font-bold text-charcoal">47</p>
-              <p className="text-xs text-charcoal/60">Active centers</p>
+          <div className="mx-auto w-full max-w-sm rounded-3xl bg-forest p-8 text-white shadow-lg">
+            <Leaf size={32} />
+            <p className="mt-5 text-2xl font-bold">From doorstep to recycling center</p>
+            <p className="mt-2 text-sm text-white/75">Follow each pickup as it moves through collection and center verification.</p>
+            <div className="mt-7 grid grid-cols-3 gap-2 text-center text-xs font-medium">
+              <span className="rounded-xl bg-white/10 px-2 py-3">Schedule</span>
+              <span className="rounded-xl bg-white/10 px-2 py-3">Collect</span>
+              <span className="rounded-xl bg-white/10 px-2 py-3">Verify</span>
             </div>
           </div>
         </div>
-      </section>
-
-      <section className="border-y border-emerald-100 bg-forest-dark py-10">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 text-center text-white md:grid-cols-4 md:px-8">
-          {STATS.map((s) => (
-            <div key={s.label}>
-              <p className="text-2xl font-bold md:text-3xl">{s.value}</p>
-              <p className="mt-1 text-xs text-white/70 md:text-sm">{s.label}</p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-6 text-center text-xs text-white/50">Illustrative demo data for presentation purposes.</p>
       </section>
 
       <section id="about" className="mx-auto max-w-7xl px-4 py-20 md:px-8">
@@ -182,7 +154,7 @@ export default function Landing() {
             Browse all centers →
           </Link>
         </div>
-        <div className="mt-8 grid gap-6 md:grid-cols-3">
+        {centers.length > 0 ? <div className="mt-8 grid gap-6 md:grid-cols-3">
           {centers.map((c) => (
             <div key={c.id} className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm">
               <h3 className="font-semibold text-charcoal">{c.name}</h3>
@@ -201,30 +173,27 @@ export default function Landing() {
               </div>
             </div>
           ))}
-        </div>
+        </div> : <p className="mt-8 rounded-2xl border border-emerald-100 bg-white p-6 text-sm text-charcoal/60">No recycling centers are listed yet.</p>}
       </section>
 
       <section id="rewards" className="bg-mint-light py-20">
         <div className="mx-auto max-w-7xl px-4 md:px-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h2 className="text-3xl font-bold text-charcoal">Redeem real rewards</h2>
+            <h2 className="text-3xl font-bold text-charcoal">Available rewards</h2>
               <p className="mt-2 text-charcoal/70">Verified recycling converts into points you can redeem instantly.</p>
             </div>
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-              Simulated catalog for this demo
-            </span>
           </div>
-          <div className="mt-8 grid gap-6 sm:grid-cols-2 md:grid-cols-4">
+          {coupons.length > 0 ? <div className="mt-8 grid gap-6 sm:grid-cols-2 md:grid-cols-4">
             {coupons.map((r) => (
               <div key={r.id} className="rounded-2xl bg-white p-5 shadow-sm border border-emerald-100">
-                <Award className="text-forest" size={22} />
+                <Gift className="text-forest" size={22} />
                 <h3 className="mt-3 text-sm font-semibold text-charcoal">{r.title}</h3>
                 <p className="mt-1 text-xs text-charcoal/50">{r.partner}</p>
                 <p className="mt-3 text-sm font-bold text-forest">{r.pointsCost.toLocaleString()} pts</p>
               </div>
             ))}
-          </div>
+          </div> : <p className="mt-8 rounded-2xl border border-emerald-100 bg-white p-6 text-sm text-charcoal/60">No rewards are available right now.</p>}
           <div className="mt-10 text-center">
             <Link
               to={residentAction}

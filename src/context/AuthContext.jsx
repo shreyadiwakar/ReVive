@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
       try {
         const profile = await getBackendAccount()
         if (!active) return
-        const nextSession = { ...session, ...profile, userId: session.userId, backendUser: true }
+        const nextSession = { ...session, ...loadSession(), ...profile, userId: session.userId, backendUser: true }
         saveSession(nextSession)
         setSession(nextSession)
       } catch { /* Keep the current session visible if the local API is temporarily unavailable. */ }

@@ -28,7 +28,7 @@ const server = createServer(async (request, response) => {
     ? {
         'access-control-allow-origin': origin,
         'access-control-allow-headers': 'content-type, x-local-role, x-local-user',
-        'access-control-allow-methods': 'GET, POST, PATCH, OPTIONS',
+        'access-control-allow-methods': 'GET, POST, PATCH, DELETE, OPTIONS',
       }
     : {}
   if (request.method === 'OPTIONS') {
@@ -38,6 +38,9 @@ const server = createServer(async (request, response) => {
 
   const url = new URL(request.url ?? '/', 'http://localhost:3000')
   const accountMatch = url.pathname.match(/^\/admin\/accounts\/([^/]+)$/)
+  const couponMatch = url.pathname.match(/^\/admin\/coupons\/([^/]+)$/)
+  const complaintMatch = url.pathname.match(/^\/admin\/complaints\/([^/]+)$/)
+  const myComplaintMatch = url.pathname.match(/^\/complaints\/([^/]+)$/)
   const role = String(request.headers['x-local-role'] ?? 'resident').toLowerCase()
   if (!Object.hasOwn(groupsByRole, role)) {
     respond(response, 400, { ...corsHeaders, 'content-type': 'application/json' }, JSON.stringify({ error: 'x-local-role must be resident, delivery, or center.' }))
@@ -69,7 +72,10 @@ const server = createServer(async (request, response) => {
     queryStringParameters: Object.fromEntries(url.searchParams.entries()),
     pathParameters: pickupMatch
       ? { id: decodeURIComponent(pickupMatch[1]) }
-      : accountMatch ? { id: decodeURIComponent(accountMatch[1]) } : undefined,
+      : accountMatch ? { id: decodeURIComponent(accountMatch[1]) }
+        : couponMatch ? { id: decodeURIComponent(couponMatch[1]) }
+          : complaintMatch ? { id: decodeURIComponent(complaintMatch[1]) }
+            : myComplaintMatch ? { id: decodeURIComponent(myComplaintMatch[1]) } : undefined,
     body: body || undefined,
     isBase64Encoded: false,
     requestContext: {

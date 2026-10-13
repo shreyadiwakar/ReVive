@@ -1,15 +1,13 @@
 import { ArrowLeft, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import SimulatedBanner from '../components/SimulatedBanner'
 import { useAuth } from '../context/AuthContext'
 import { ROLES } from '../utils/constants'
-import { backendEnabled } from '../services/backendApi'
 
 export default function AdminLogin() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = useState(backendEnabled ? '' : 'admin@revive.demo')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
@@ -65,7 +63,6 @@ export default function AdminLogin() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="demo123"
               className="w-full rounded-xl border border-emerald-200 px-3.5 py-2.5 text-sm focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
             />
           </div>
@@ -81,10 +78,6 @@ export default function AdminLogin() {
           Authorized personnel only
         </p>
 
-        <div className="mt-4">
-          {!backendEnabled && <SimulatedBanner compact />}
-        </div>
-        {!backendEnabled && <p className="mt-3 text-center text-xs text-charcoal/40">Demo admin: admin@revive.demo / demo123</p>}
       </div>
     </div>
   )

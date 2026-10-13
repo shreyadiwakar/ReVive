@@ -2,6 +2,7 @@ import { Clock, MapPin, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import EmptyState from '../../components/EmptyState'
 import Modal from '../../components/Modal'
+import Pagination from '../../components/Pagination'
 import { useAuth } from '../../context/AuthContext'
 import { useAppData } from '../../context/AppDataContext'
 import { getRoadDistances, isValidLocation } from '../../services/mapServices'
@@ -14,6 +15,7 @@ export default function UserCenters() {
   const [category, setCategory] = useState('All')
   const [selected, setSelected] = useState(null)
   const [distances, setDistances] = useState({})
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
     let active = true
@@ -36,6 +38,9 @@ export default function UserCenters() {
     const matchesCategory = category === 'All' || c.acceptedCategories.includes(category)
     return matchesSearch && matchesCategory
   })
+  const pageSize = 12
+  const totalPages = Math.max(1, Math.ceil(centers.length / pageSize))
+  const pageCenters = centers.slice((Math.min(page, totalPages) - 1) * pageSize, Math.min(page, totalPages) * pageSize)
 
   return (
     <div>
@@ -47,14 +52,14 @@ export default function UserCenters() {
           <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-charcoal/40" />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
             placeholder="Search centers by name or address"
             className="w-full rounded-xl border border-emerald-200 py-2.5 pl-10 pr-3.5 text-sm focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
           />
         </div>
         <select
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          onChange={(e) => { setCategory(e.target.value); setPage(1) }}
           className="rounded-xl border border-emerald-200 px-3.5 py-2.5 text-sm focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
         >
           <option value="All">All categories</option>
@@ -70,7 +75,7 @@ export default function UserCenters() {
         </div>
       ) : (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {centers.map((c) => (
+          {pageCenters.map((c) => (
             <div key={c.id} className="rounded-2xl bg-white p-5 shadow-sm border border-emerald-100/70">
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-semibold text-charcoal">{c.name}</h3>
@@ -104,6 +109,9 @@ export default function UserCenters() {
               </button>
             </div>
           ))}
+          <div className="sm:col-span-2 lg:col-span-3">
+            <Pagination page={Math.min(page, totalPages)} totalPages={totalPages} onChange={setPage} />
+          </div>
         </div>
       )}
 

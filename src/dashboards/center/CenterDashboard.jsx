@@ -2,6 +2,7 @@ import { Archive, ClipboardCheck, Inbox, PackageCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import CategoryPieChart from '../../components/CategoryPieChart'
 import EmptyState from '../../components/EmptyState'
+import ReportComplaint from '../../components/ReportComplaint'
 import StatCard from '../../components/StatCard'
 import StatusBadge from '../../components/StatusBadge'
 import { useAppData } from '../../context/AppDataContext'
@@ -51,7 +52,10 @@ export default function CenterDashboard() {
       <div className="grid gap-4 lg:grid-cols-2">
         <CategoryPieChart data={totals} title="Categories processed" />
         <div className="rounded-2xl bg-white p-5 shadow-sm border border-emerald-100/70">
-          <h2 className="text-sm font-semibold text-charcoal">Awaiting verification</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-charcoal">Awaiting verification</h2>
+            <Link to="/center/verification" className="text-sm font-semibold text-forest hover:underline">View all</Link>
+          </div>
           {awaitingVerification.length === 0 ? (
             <div className="mt-4">
               <EmptyState icon={ClipboardCheck} title="Nothing to verify" description="Confirmed deliveries ready for verification appear here." />
@@ -106,6 +110,7 @@ export default function CenterDashboard() {
           </div>
         )}
       </div>
+      <ReportComplaint />
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { ListChecks, Package, PlusCircle, Recycle, Star } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import ActivityChart from '../../components/ActivityChart'
 import EmptyState from '../../components/EmptyState'
+import ReportComplaint from '../../components/ReportComplaint'
 import PointsGauge from '../../components/PointsGauge'
 import StatCard from '../../components/StatCard'
 import StatusBadge from '../../components/StatusBadge'
@@ -145,6 +146,7 @@ export default function UserDashboard() {
           </div>
         )}
       </div>
+      <ReportComplaint />
     </div>
   )
 }

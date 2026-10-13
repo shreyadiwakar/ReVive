@@ -1,9 +1,7 @@
 import { ArrowLeft, LogIn, ShieldAlert } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import SimulatedBanner from '../components/SimulatedBanner'
 import { roleHomePath, useAuth } from '../context/AuthContext'
-import { DEMO_CREDENTIALS } from '../data/seedData'
 import { ROLES } from '../utils/constants'
 
 export default function Login() {
@@ -33,14 +31,6 @@ export default function Login() {
       setBusy(false)
     }
   }
-
-  const fillDemo = (account) => {
-    setEmail(account.email)
-    setPassword(account.password)
-    setError('')
-  }
-
-  const residentCreds = DEMO_CREDENTIALS.filter((c) => !['Administrator', 'User'].includes(c.role))
 
   return (
     <div className="flex min-h-screen bg-mint-light">
@@ -100,24 +90,6 @@ export default function Login() {
           </p>
         </div>
 
-        <div className="w-full max-w-sm self-center rounded-2xl bg-white p-6 shadow-sm border border-emerald-100">
-          <SimulatedBanner />
-          <h3 className="mt-4 text-sm font-semibold text-charcoal">Demo partner accounts (password: demo123)</h3>
-          <ul className="mt-3 space-y-2">
-            {residentCreds.map((a) => (
-              <li key={a.email}>
-                <button
-                  type="button"
-                  onClick={() => fillDemo(a)}
-                  className="w-full rounded-xl border border-emerald-200 px-3 py-2 text-left text-xs hover:bg-mint-light transition"
-                >
-                  <span className="block font-semibold text-charcoal">{a.role}</span>
-                  <span className="text-charcoal/50">{a.email}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
       </div>
     </div>
   )
