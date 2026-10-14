@@ -48,12 +48,37 @@ const FALLBACK_COUPONS = [
   { id: 'coupon_movie', title: 'Movie Ticket Voucher', partner: 'CineStar', pointsCost: 1600, category: 'Entertainment' },
 ]
 
+const FALLBACK_CENTERS = [
+  {
+    id: 'center_greenloop',
+    name: 'GreenLoop Recycling Hub',
+    address: '42 Eco Park Road, Sector 12',
+    operatingHours: 'Mon–Sat 8:00 AM – 8:00 PM',
+    acceptedCategories: ['Plastic', 'Paper', 'Glass', 'Metal'],
+  },
+  {
+    id: 'center_ewaste',
+    name: 'Urban E-Waste Solutions',
+    address: '18 Tech Lane, Industrial Area',
+    operatingHours: 'Mon–Fri 9:00 AM – 6:00 PM',
+    acceptedCategories: ['E-waste', 'Metal', 'Other'],
+  },
+  {
+    id: 'center_releaf',
+    name: 'ReLeaf Organic Center',
+    address: '7 Garden Street, North Block',
+    operatingHours: 'Daily 7:00 AM – 7:00 PM',
+    acceptedCategories: ['Organic', 'Paper', 'Other'],
+  },
+]
+
 export default function Landing() {
   const { db, loading, backendEnabled } = useAppData()
   const { user } = useAuth()
   const residentAction = user ? roleHomePath(user.role) : '/register'
   const partnerAction = user ? roleHomePath(user.role) : '/register'
-  const centers = (db?.centers || []).filter((c) => c.available).slice(0, 3)
+  const centers = ((db?.centers || []).filter((c) => c.available).slice(0, 3))
+  const featuredCenters = centers.length > 0 ? centers : FALLBACK_CENTERS
   const coupons = (db?.coupons || [])
     .filter((coupon) => coupon.active !== false)
     .sort((a, b) => Number(a.pointsCost || 0) - Number(b.pointsCost || 0))
@@ -165,8 +190,8 @@ export default function Landing() {
             Browse all centers →
           </Link>
         </div>
-        {centers.length > 0 ? <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {centers.map((c) => (
+        {featuredCenters.length > 0 ? <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {featuredCenters.map((c) => (
             <div key={c.id} className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm">
               <h3 className="font-semibold text-charcoal">{c.name}</h3>
               <p className="mt-2 flex items-center gap-1.5 text-sm text-charcoal/60">
@@ -176,7 +201,7 @@ export default function Landing() {
                 <Clock size={14} /> {c.operatingHours}
               </p>
               <div className="mt-4 flex flex-wrap gap-1.5">
-                {c.acceptedCategories.map((cat) => (
+                {(c.acceptedCategories || []).map((cat) => (
                   <span key={cat} className="rounded-full bg-mint-light px-2.5 py-0.5 text-xs font-medium text-forest">
                     {cat}
                   </span>
