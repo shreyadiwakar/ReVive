@@ -120,30 +120,57 @@ export default function UserDashboard() {
             />
           </div>
         ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs uppercase tracking-wide text-charcoal/40">
-                  <th className="pb-2 pr-4">Date</th>
-                  <th className="pb-2 pr-4">Category</th>
-                  <th className="pb-2 pr-4">Quantity</th>
-                  <th className="pb-2 pr-4">Status</th>
-                  <th className="pb-2 pr-4">Points</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map((p) => (
-                  <tr key={p.id} className="border-t border-emerald-50">
-                    <td className="py-2.5 pr-4 text-charcoal/70">{formatDate(p.createdAt)}</td>
-                    <td className="py-2.5 pr-4 text-charcoal">{p.wasteCategory}</td>
-                    <td className="py-2.5 pr-4 text-charcoal/70">{formatKg(p.quantityKg)}</td>
-                    <td className="py-2.5 pr-4"><StatusBadge status={p.status} /></td>
-                    <td className="py-2.5 pr-4 font-medium text-forest">{p.pointsAwarded > 0 ? `+${p.pointsAwarded}` : '—'}</td>
+          <>
+            <div className="mt-3 hidden overflow-x-auto sm:block">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-xs uppercase tracking-wide text-charcoal/40">
+                    <th className="pb-2 pr-4">Date</th>
+                    <th className="pb-2 pr-4">Category</th>
+                    <th className="pb-2 pr-4">Quantity</th>
+                    <th className="pb-2 pr-4">Status</th>
+                    <th className="pb-2 pr-4">Points</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {recent.map((p) => (
+                    <tr key={p.id} className="border-t border-emerald-50">
+                      <td className="py-2.5 pr-4 text-charcoal/70">{formatDate(p.createdAt)}</td>
+                      <td className="py-2.5 pr-4 text-charcoal">{p.wasteCategory}</td>
+                      <td className="py-2.5 pr-4 text-charcoal/70">{formatKg(p.quantityKg)}</td>
+                      <td className="py-2.5 pr-4"><StatusBadge status={p.status} /></td>
+                      <td className="py-2.5 pr-4 font-medium text-forest">{p.pointsAwarded > 0 ? `+${p.pointsAwarded}` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-3 space-y-3 sm:hidden">
+              {recent.map((p) => (
+                <div key={p.id} className="rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-charcoal">{p.wasteCategory}</p>
+                    <p className="font-semibold text-forest">{p.pointsAwarded > 0 ? `+${p.pointsAwarded}` : '—'}</p>
+                  </div>
+                  <div className="mt-2 space-y-2 text-sm text-charcoal/70">
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Date</span>
+                      <span>{formatDate(p.createdAt)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Qty</span>
+                      <span>{formatKg(p.quantityKg)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Status</span>
+                      <StatusBadge status={p.status} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
       <ReportComplaint />

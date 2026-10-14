@@ -49,41 +49,63 @@ export default function AdminComplaints() {
       <EmptyState icon={AlertCircle} title={emptyTitle} description="Complaints will appear here when submitted." />
     </div>
   ) : (
-    <div className="mt-3 overflow-x-auto rounded-2xl border border-emerald-100/70 bg-white shadow-sm">
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-emerald-50 text-xs uppercase tracking-wide text-charcoal/40">
-            <th className="px-5 py-3">Submitted by</th>
-            <th className="px-5 py-3">Complaint</th>
-            <th className="px-5 py-3">Date</th>
-            <th className="px-5 py-3">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.slice((page - 1) * 10, page * 10).map((complaint) => (
-            <tr key={complaint.id} className="border-b border-emerald-50 last:border-0">
-              <td className="px-5 py-4">
-                <p className="font-medium text-charcoal">{complaint.user || complaint.accountName || 'Resident or partner'}</p>
-                <p className="mt-0.5 text-xs text-charcoal/50">{getSenderType(complaint)}</p>
-              </td>
-              <td className="px-5 py-4 text-charcoal/70">
-                <p className="font-medium text-charcoal">{complaint.subject}</p>
-                {complaint.details && <p className="mt-1 max-w-2xl whitespace-pre-wrap text-xs text-charcoal/55">{complaint.details}</p>}
-              </td>
-              <td className="whitespace-nowrap px-5 py-4 text-charcoal/50">{formatDateTime(complaint.createdAt)}</td>
-              <td className="px-5 py-4">
-                <button type="button" onClick={() => toggleStatus(complaint)} className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-charcoal hover:bg-mint-light">
-                  Mark as {complaint.status === 'resolved' ? 'open' : 'resolved'}
-                </button>
-              </td>
+    <>
+      <div className="mt-3 hidden overflow-x-auto rounded-2xl border border-emerald-100/70 bg-white shadow-sm sm:block">
+        <table className="w-full min-w-0 text-left text-sm">
+          <thead>
+            <tr className="border-b border-emerald-50 text-xs uppercase tracking-wide text-charcoal/40">
+              <th className="px-3 py-3 sm:px-5">Submitted by</th>
+              <th className="px-3 py-3 sm:px-5">Complaint</th>
+              <th className="px-3 py-3 sm:px-5">Date</th>
+              <th className="px-3 py-3 sm:px-5">Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {items.slice((page - 1) * 10, page * 10).map((complaint) => (
+              <tr key={complaint.id} className="border-b border-emerald-50 align-top last:border-0">
+                <td className="px-3 py-4 sm:px-5">
+                  <p className="font-medium text-charcoal">{complaint.user || complaint.accountName || 'Resident or partner'}</p>
+                  <p className="mt-0.5 text-xs text-charcoal/50">{getSenderType(complaint)}</p>
+                </td>
+                <td className="px-3 py-4 text-charcoal/70 sm:px-5">
+                  <p className="font-medium text-charcoal">{complaint.subject}</p>
+                  {complaint.details && <p className="mt-1 max-w-2xl whitespace-pre-wrap break-words text-xs text-charcoal/55">{complaint.details}</p>}
+                </td>
+                <td className="px-3 py-4 text-charcoal/50 sm:px-5">{formatDateTime(complaint.createdAt)}</td>
+                <td className="px-3 py-4 sm:px-5">
+                  <button type="button" onClick={() => toggleStatus(complaint)} className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-charcoal hover:bg-mint-light">
+                    Mark as {complaint.status === 'resolved' ? 'open' : 'resolved'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-3 space-y-3 sm:hidden">
+        {items.slice((page - 1) * 10, page * 10).map((complaint) => (
+          <div key={complaint.id} className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold text-charcoal">{complaint.user || complaint.accountName || 'Resident or partner'}</p>
+                <p className="mt-1 text-xs text-charcoal/50">{getSenderType(complaint)}</p>
+              </div>
+              <span className="text-xs text-charcoal/50">{formatDateTime(complaint.createdAt)}</span>
+            </div>
+            <p className="mt-3 font-medium text-charcoal">{complaint.subject}</p>
+            {complaint.details && <p className="mt-2 whitespace-pre-wrap break-words text-sm text-charcoal/60">{complaint.details}</p>}
+            <button type="button" onClick={() => toggleStatus(complaint)} className="mt-4 rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-charcoal hover:bg-mint-light">
+              Mark as {complaint.status === 'resolved' ? 'open' : 'resolved'}
+            </button>
+          </div>
+        ))}
+      </div>
+
       <div className="px-5 pb-5">
         <Pagination page={page} totalPages={Math.max(1, Math.ceil(items.length / 10))} onChange={setPage} />
       </div>
-    </div>
+    </>
   )
 
   return (

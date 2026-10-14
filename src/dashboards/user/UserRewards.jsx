@@ -169,46 +169,85 @@ export default function UserRewards() {
           <EmptyState icon={Award} title="No reward activity yet" description="Earn points by completing verified pickups." />
         </div>
       ) : (
-        <div className="mt-3 overflow-x-auto rounded-2xl bg-white shadow-sm border border-emerald-100/70">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-emerald-50 text-xs uppercase tracking-wide text-charcoal/40">
-                <th className="px-5 py-3">Date</th>
-                <th className="px-5 py-3">Description</th>
-                <th className="px-5 py-3">Demo fulfilment</th>
-                <th className="px-5 py-3">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageHistory.map((t) => (
-                <tr key={t.id} className="border-b border-emerald-50 last:border-0">
-                  <td className="px-5 py-3 text-charcoal/60">{formatDateTime(t.createdAt)}</td>
-                  <td className="px-5 py-3 text-charcoal">{t.description}</td>
-                  <td className="px-5 py-3 text-charcoal/70">
-                    {t.fulfillmentType === 'cash_request' ? (
-                      <span className="text-xs font-medium text-emerald-700">Done</span>
-                    ) : t.fulfillmentCode ? (
-                      <span>
-                        <span className="block text-xs text-charcoal/50">Voucher</span>
-                        <span className="font-mono text-xs font-semibold text-forest">{t.fulfillmentCode}</span>
-                        <button type="button" onClick={() => copyCode(t.fulfillmentCode)} className="ml-2 inline-flex items-center gap-1 rounded-md border border-emerald-200 px-2 py-1 text-[10px] font-semibold text-forest hover:bg-mint-light">
-                          {copiedCode === t.fulfillmentCode ? <Check size={12} /> : <Copy size={12} />}
-                          {copiedCode === t.fulfillmentCode ? 'Copied' : 'Copy'}
-                        </button>
-                      </span>
-                    ) : '—'}
-                  </td>
-                  <td className={`px-5 py-3 font-semibold ${t.amount > 0 ? 'text-forest' : 'text-red-600'}`}>
-                    {t.amount > 0 ? `+${t.amount}` : t.amount}
-                  </td>
+        <>
+          <div className="mt-3 hidden overflow-x-auto rounded-2xl bg-white shadow-sm border border-emerald-100/70 sm:block">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-emerald-50 text-xs uppercase tracking-wide text-charcoal/40">
+                  <th className="px-5 py-3">Date</th>
+                  <th className="px-5 py-3">Description</th>
+                  <th className="px-5 py-3">Demo fulfilment</th>
+                  <th className="px-5 py-3">Amount</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="px-5 pb-5">
-            <Pagination page={safeHistoryPage} totalPages={historyPages} onChange={setHistoryPage} />
+              </thead>
+              <tbody>
+                {pageHistory.map((t) => (
+                  <tr key={t.id} className="border-b border-emerald-50 last:border-0">
+                    <td className="px-5 py-3 text-charcoal/60">{formatDateTime(t.createdAt)}</td>
+                    <td className="px-5 py-3 text-charcoal">{t.description}</td>
+                    <td className="px-5 py-3 text-charcoal/70">
+                      {t.fulfillmentType === 'cash_request' ? (
+                        <span className="text-xs font-medium text-emerald-700">Done</span>
+                      ) : t.fulfillmentCode ? (
+                        <span>
+                          <span className="block text-xs text-charcoal/50">Voucher</span>
+                          <span className="font-mono text-xs font-semibold text-forest">{t.fulfillmentCode}</span>
+                          <button type="button" onClick={() => copyCode(t.fulfillmentCode)} className="ml-2 inline-flex items-center gap-1 rounded-md border border-emerald-200 px-2 py-1 text-[10px] font-semibold text-forest hover:bg-mint-light">
+                            {copiedCode === t.fulfillmentCode ? <Check size={12} /> : <Copy size={12} />}
+                            {copiedCode === t.fulfillmentCode ? 'Copied' : 'Copy'}
+                          </button>
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td className={`px-5 py-3 font-semibold ${t.amount > 0 ? 'text-forest' : 'text-red-600'}`}>
+                      {t.amount > 0 ? `+${t.amount}` : t.amount}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="px-5 pb-5">
+              <Pagination page={safeHistoryPage} totalPages={historyPages} onChange={setHistoryPage} />
+            </div>
           </div>
-        </div>
+
+          <div className="mt-3 space-y-3 sm:hidden">
+            {pageHistory.map((t) => (
+              <div key={t.id} className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold text-charcoal">{t.description}</p>
+                  <span className={`font-semibold ${t.amount > 0 ? 'text-forest' : 'text-red-600'}`}>
+                    {t.amount > 0 ? `+${t.amount}` : t.amount}
+                  </span>
+                </div>
+                <div className="mt-3 space-y-2 text-sm text-charcoal/70">
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Date</span>
+                    <span>{formatDateTime(t.createdAt)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Fulfilment</span>
+                    <span className="text-right">
+                      {t.fulfillmentType === 'cash_request' ? (
+                        <span className="font-medium text-emerald-700">Done</span>
+                      ) : t.fulfillmentCode ? (
+                        <span className="font-mono text-[10px] font-semibold text-forest">{t.fulfillmentCode}</span>
+                      ) : '—'}
+                    </span>
+                  </div>
+                  {t.fulfillmentCode && (
+                    <div className="flex justify-end">
+                      <button type="button" onClick={() => copyCode(t.fulfillmentCode)} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 px-2 py-1 text-[10px] font-semibold text-forest hover:bg-mint-light">
+                        {copiedCode === t.fulfillmentCode ? <Check size={12} /> : <Copy size={12} />}
+                        {copiedCode === t.fulfillmentCode ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <ConfirmDialog

@@ -65,47 +65,87 @@ export default function CenterRequests() {
           <EmptyState icon={Inbox} title="No incoming requests" description="Pickups assigned to your center will appear here." />
         </div>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm border border-emerald-100/70">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-emerald-50 text-xs uppercase tracking-wide text-charcoal/40">
-                <th className="px-5 py-3">Resident</th>
-                <th className="px-5 py-3">Category</th>
-                <th className="px-5 py-3">Est. weight</th>
-                <th className="px-5 py-3">Expected</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRequests.map((p) => (
-                <tr key={p.id} className="border-b border-emerald-50 last:border-0">
-                  <td className="px-5 py-3 text-charcoal">{p.userName}</td>
-                  <td className="px-5 py-3 text-charcoal/70">{p.wasteCategory}</td>
-                  <td className="px-5 py-3 text-charcoal/70">{formatKg(p.quantityKg)}</td>
-                  <td className="px-5 py-3 text-charcoal/70">{formatDate(p.scheduledAt)}</td>
-                  <td className="px-5 py-3"><StatusBadge status={p.status} /></td>
-                  <td className="px-5 py-3">
-                    {backendEnabled && p.status === PICKUP_STATUS.DELIVERED ? (
-                      <Link to="/center/verification" className="rounded-lg bg-forest px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest-dark">Verify recycling</Link>
-                    ) : p.status === PICKUP_STATUS.DELIVERED && p.verifiedWeightKg == null ? (
-                      <button type="button" onClick={() => openConfirm(p)} className="rounded-lg bg-forest px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest-dark">
-                        Confirm received
-                      </button>
-                    ) : p.verifiedWeightKg != null ? (
-                      <span className="text-xs font-medium text-emerald-700">Received {formatKg(p.verifiedWeightKg)}</span>
-                    ) : (
-                      <span className="text-xs text-charcoal/40">En route</span>
-                    )}
-                  </td>
+        <>
+          <div className="mt-6 hidden overflow-x-auto rounded-2xl bg-white shadow-sm border border-emerald-100/70 sm:block">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-emerald-50 text-xs uppercase tracking-wide text-charcoal/40">
+                  <th className="px-5 py-3">Resident</th>
+                  <th className="px-5 py-3">Category</th>
+                  <th className="px-5 py-3">Est. weight</th>
+                  <th className="px-5 py-3">Expected</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="px-5 pb-5">
-            <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
+              </thead>
+              <tbody>
+                {pageRequests.map((p) => (
+                  <tr key={p.id} className="border-b border-emerald-50 last:border-0">
+                    <td className="px-5 py-3 text-charcoal">{p.userName}</td>
+                    <td className="px-5 py-3 text-charcoal/70">{p.wasteCategory}</td>
+                    <td className="px-5 py-3 text-charcoal/70">{formatKg(p.quantityKg)}</td>
+                    <td className="px-5 py-3 text-charcoal/70">{formatDate(p.scheduledAt)}</td>
+                    <td className="px-5 py-3"><StatusBadge status={p.status} /></td>
+                    <td className="px-5 py-3">
+                      {backendEnabled && p.status === PICKUP_STATUS.DELIVERED ? (
+                        <Link to="/center/verification" className="rounded-lg bg-forest px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest-dark">Verify recycling</Link>
+                      ) : p.status === PICKUP_STATUS.DELIVERED && p.verifiedWeightKg == null ? (
+                        <button type="button" onClick={() => openConfirm(p)} className="rounded-lg bg-forest px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest-dark">
+                          Confirm received
+                        </button>
+                      ) : p.verifiedWeightKg != null ? (
+                        <span className="text-xs font-medium text-emerald-700">Received {formatKg(p.verifiedWeightKg)}</span>
+                      ) : (
+                        <span className="text-xs text-charcoal/40">En route</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="px-5 pb-5">
+              <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
+            </div>
           </div>
-        </div>
+
+          <div className="mt-6 space-y-3 sm:hidden">
+            {pageRequests.map((p) => (
+              <div key={p.id} className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold text-charcoal">{p.userName}</p>
+                  <StatusBadge status={p.status} />
+                </div>
+                <div className="mt-3 space-y-2 text-sm text-charcoal/70">
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Category</span>
+                    <span className="font-medium text-charcoal">{p.wasteCategory}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Est. weight</span>
+                    <span className="font-medium text-charcoal">{formatKg(p.quantityKg)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Expected</span>
+                    <span className="font-medium text-charcoal">{formatDate(p.scheduledAt)}</span>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  {backendEnabled && p.status === PICKUP_STATUS.DELIVERED ? (
+                    <Link to="/center/verification" className="inline-flex rounded-lg bg-forest px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest-dark">Verify recycling</Link>
+                  ) : p.status === PICKUP_STATUS.DELIVERED && p.verifiedWeightKg == null ? (
+                    <button type="button" onClick={() => openConfirm(p)} className="inline-flex rounded-lg bg-forest px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest-dark">
+                      Confirm received
+                    </button>
+                  ) : p.verifiedWeightKg != null ? (
+                    <span className="text-xs font-medium text-emerald-700">Received {formatKg(p.verifiedWeightKg)}</span>
+                  ) : (
+                    <span className="text-xs text-charcoal/40">En route</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <Modal open={!!confirmTarget} title="Confirm received quantity" onClose={() => setConfirmTarget(null)} maxWidth="max-w-sm">

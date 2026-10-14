@@ -250,29 +250,57 @@ export default function AdminRewards() {
         {transactions.length === 0 ? (
           <p className="mt-3 text-sm text-charcoal/50">No reward activity yet.</p>
         ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs uppercase tracking-wide text-charcoal/40">
-                  <th className="pb-2 pr-4">User</th>
-                  <th className="pb-2 pr-4">Description</th>
-                  <th className="pb-2 pr-4">Amount</th>
-                  <th className="pb-2 pr-4">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="border-t border-emerald-50">
-                    <td className="py-2.5 pr-4 text-charcoal">{transaction.userName || 'Resident'}</td>
-                    <td className="py-2.5 pr-4 text-charcoal/70">{transaction.description}</td>
-                    <td className={`py-2.5 pr-4 font-semibold ${transaction.amount > 0 ? 'text-forest' : 'text-red-600'}`}>{transaction.amount > 0 ? `+${transaction.amount}` : transaction.amount}</td>
-                    <td className="py-2.5 pr-4 text-charcoal/50">{formatDateTime(transaction.createdAt)}</td>
+          <>
+            <div className="mt-3 hidden overflow-x-auto sm:block">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-xs uppercase tracking-wide text-charcoal/40">
+                    <th className="pb-2 pr-4">User</th>
+                    <th className="pb-2 pr-4">Description</th>
+                    <th className="pb-2 pr-4">Amount</th>
+                    <th className="pb-2 pr-4">Date</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            <Pagination page={safeTransactionPage} totalPages={transactionTotalPages} onChange={setTransactionPage} />
-          </div>
+                </thead>
+                <tbody>
+                  {pageTransactions.map((transaction) => (
+                    <tr key={transaction.id} className="border-t border-emerald-50">
+                      <td className="py-2.5 pr-4 text-charcoal">{transaction.userName || 'Resident'}</td>
+                      <td className="py-2.5 pr-4 text-charcoal/70">{transaction.description}</td>
+                      <td className={`py-2.5 pr-4 font-semibold ${transaction.amount > 0 ? 'text-forest' : 'text-red-600'}`}>{transaction.amount > 0 ? `+${transaction.amount}` : transaction.amount}</td>
+                      <td className="py-2.5 pr-4 text-charcoal/50">{formatDateTime(transaction.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-3 space-y-3 sm:hidden">
+              {pageTransactions.map((transaction) => (
+                <div key={transaction.id} className="rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-charcoal">{transaction.userName || 'Resident'}</p>
+                    <span className={`font-semibold ${transaction.amount > 0 ? 'text-forest' : 'text-red-600'}`}>
+                      {transaction.amount > 0 ? `+${transaction.amount}` : transaction.amount}
+                    </span>
+                  </div>
+                  <div className="mt-2 space-y-2 text-sm text-charcoal/70">
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Description</span>
+                      <span className="text-right font-medium text-charcoal">{transaction.description}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Date</span>
+                      <span>{formatDateTime(transaction.createdAt)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3">
+              <Pagination page={safeTransactionPage} totalPages={transactionTotalPages} onChange={setTransactionPage} />
+            </div>
+          </>
         )}
       </section>
 

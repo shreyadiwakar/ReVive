@@ -86,28 +86,51 @@ export default function CenterDashboard() {
             <EmptyState icon={Inbox} title="No incoming requests" description="Accepted pickups heading to your center will show here." />
           </div>
         ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs uppercase tracking-wide text-charcoal/40">
-                  <th className="pb-2 pr-4">Resident</th>
-                  <th className="pb-2 pr-4">Category</th>
-                  <th className="pb-2 pr-4">Quantity</th>
-                  <th className="pb-2 pr-4">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {incoming.slice(0, 6).map((p) => (
-                  <tr key={p.id} className="border-t border-emerald-50">
-                    <td className="py-2.5 pr-4 text-charcoal">{p.userName}</td>
-                    <td className="py-2.5 pr-4 text-charcoal/70">{p.wasteCategory}</td>
-                    <td className="py-2.5 pr-4 text-charcoal/70">{formatKg(p.quantityKg)}</td>
-                    <td className="py-2.5 pr-4"><StatusBadge status={p.status} /></td>
+          <>
+            <div className="mt-3 hidden overflow-x-auto sm:block">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-xs uppercase tracking-wide text-charcoal/40">
+                    <th className="pb-2 pr-4">Resident</th>
+                    <th className="pb-2 pr-4">Category</th>
+                    <th className="pb-2 pr-4">Quantity</th>
+                    <th className="pb-2 pr-4">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {incoming.slice(0, 6).map((p) => (
+                    <tr key={p.id} className="border-t border-emerald-50">
+                      <td className="py-2.5 pr-4 text-charcoal">{p.userName}</td>
+                      <td className="py-2.5 pr-4 text-charcoal/70">{p.wasteCategory}</td>
+                      <td className="py-2.5 pr-4 text-charcoal/70">{formatKg(p.quantityKg)}</td>
+                      <td className="py-2.5 pr-4"><StatusBadge status={p.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-3 space-y-3 sm:hidden">
+              {incoming.slice(0, 6).map((p) => (
+                <div key={p.id} className="rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-charcoal">{p.userName}</p>
+                    <StatusBadge status={p.status} />
+                  </div>
+                  <div className="mt-2 space-y-2 text-sm text-charcoal/70">
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Category</span>
+                      <span className="font-medium text-charcoal">{p.wasteCategory}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Quantity</span>
+                      <span className="font-medium text-charcoal">{formatKg(p.quantityKg)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
       <ReportComplaint />

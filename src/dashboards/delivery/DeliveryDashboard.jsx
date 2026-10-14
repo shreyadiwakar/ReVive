@@ -56,30 +56,57 @@ export default function DeliveryDashboard() {
             <EmptyState icon={Truck} title="No jobs yet" description="Accept an available job to start your first delivery." />
           </div>
         ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs uppercase tracking-wide text-charcoal/40">
-                  <th className="pb-2 pr-4">Request</th>
-                  <th className="pb-2 pr-4">Resident</th>
-                  <th className="pb-2 pr-4">Scheduled</th>
-                  <th className="pb-2 pr-4">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map((p) => (
-                  <tr key={p.id} className="border-t border-emerald-50">
-                    <td className="py-2.5 pr-4">
-                      <Link to={`/delivery/jobs/${p.id}`} className="font-mono text-xs text-forest hover:underline">{p.id}</Link>
-                    </td>
-                    <td className="py-2.5 pr-4 text-charcoal">{p.userName}</td>
-                    <td className="py-2.5 pr-4 text-charcoal/70">{formatDate(p.scheduledAt)} · {formatKg(p.quantityKg)}</td>
-                    <td className="py-2.5 pr-4"><StatusBadge status={p.status} /></td>
+          <>
+            <div className="mt-3 hidden overflow-x-auto sm:block">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-xs uppercase tracking-wide text-charcoal/40">
+                    <th className="pb-2 pr-4">Request</th>
+                    <th className="pb-2 pr-4">Resident</th>
+                    <th className="pb-2 pr-4">Scheduled</th>
+                    <th className="pb-2 pr-4">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {recent.map((p) => (
+                    <tr key={p.id} className="border-t border-emerald-50">
+                      <td className="py-2.5 pr-4">
+                        <Link to={`/delivery/jobs/${p.id}`} className="font-mono text-xs text-forest hover:underline">{p.id}</Link>
+                      </td>
+                      <td className="py-2.5 pr-4 text-charcoal">{p.userName}</td>
+                      <td className="py-2.5 pr-4 text-charcoal/70">{formatDate(p.scheduledAt)} · {formatKg(p.quantityKg)}</td>
+                      <td className="py-2.5 pr-4"><StatusBadge status={p.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-3 space-y-3 sm:hidden">
+              {recent.map((p) => (
+                <div key={p.id} className="rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <Link to={`/delivery/jobs/${p.id}`} className="font-mono text-[10px] text-forest hover:underline">{p.id}</Link>
+                    <StatusBadge status={p.status} />
+                  </div>
+                  <div className="mt-2 space-y-2 text-sm text-charcoal/70">
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Resident</span>
+                      <span className="font-medium text-charcoal">{p.userName}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Scheduled</span>
+                      <span className="font-medium text-charcoal">{formatDate(p.scheduledAt)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Qty</span>
+                      <span className="font-medium text-charcoal">{formatKg(p.quantityKg)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
       <ReportComplaint />

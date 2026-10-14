@@ -78,54 +78,97 @@ export default function AdminUsers() {
           <EmptyState icon={Users} title="No users found" description="Try a different search or filter." />
         </div>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm border border-emerald-100/70">
-          <table className="w-full min-w-[900px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-emerald-50 text-xs uppercase tracking-wide text-charcoal/40">
-                <th className="px-5 py-3">Name</th>
-                <th className="px-5 py-3">Email</th>
-                <th className="px-5 py-3">Role</th>
-                <th className="px-5 py-3">Points</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageItems.map((u) => (
-                <tr key={u.id} className="border-b border-emerald-50 last:border-0">
-                  <td className="px-5 py-3 text-charcoal">{u.name}</td>
-                  <td className="px-5 py-3 text-charcoal/70">{u.email}</td>
-                  <td className="whitespace-nowrap px-5 py-3">
-                    <span className="inline-flex w-max flex-nowrap items-center whitespace-nowrap rounded-full bg-mint-light px-2.5 py-0.5 text-xs font-medium text-forest">{getRoleLabel(u.role)}</span>
-                  </td>
-                  <td className="px-5 py-3 text-charcoal/70">{u.role === ROLES.USER ? Number(u.points ?? 0).toLocaleString() : '—'}</td>
-                  <td className="px-5 py-3"><ApprovalBadge status={u.status} /></td>
-                  <td className="px-5 py-3">
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => setViewing(u)} className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-charcoal hover:bg-mint-light">
-                        View
-                      </button>
-                      {u.role !== 'admin' && (
-                        <button
-                          type="button"
-                          onClick={() => setSuspendTarget(u)}
-                          className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
-                            u.status === ACCOUNT_STATUS.SUSPENDED ? 'border-emerald-200 text-forest hover:bg-mint-light' : 'border-red-200 text-red-700 hover:bg-red-50'
-                          }`}
-                        >
-                          {u.status === ACCOUNT_STATUS.SUSPENDED ? 'Activate' : 'Suspend'}
-                        </button>
-                      )}
-                    </div>
-                  </td>
+        <>
+          <div className="mt-6 hidden overflow-x-auto rounded-2xl bg-white shadow-sm border border-emerald-100/70 sm:block">
+            <table className="w-full min-w-0 text-left text-sm">
+              <thead>
+                <tr className="border-b border-emerald-50 text-xs uppercase tracking-wide text-charcoal/40">
+                  <th className="px-3 py-3 sm:px-5">Name</th>
+                  <th className="px-3 py-3 sm:px-5">Email</th>
+                  <th className="px-3 py-3 sm:px-5">Role</th>
+                  <th className="px-3 py-3 sm:px-5">Points</th>
+                  <th className="px-3 py-3 sm:px-5">Status</th>
+                  <th className="px-3 py-3 sm:px-5">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pageItems.map((u) => (
+                  <tr key={u.id} className="border-b border-emerald-50 align-top last:border-0">
+                    <td className="px-3 py-3 text-charcoal sm:px-5">{u.name}</td>
+                    <td className="break-all px-3 py-3 text-charcoal/70 sm:px-5">{u.email}</td>
+                    <td className="px-3 py-3 sm:px-5">
+                      <span className="inline-flex max-w-full flex-nowrap items-center rounded-full bg-mint-light px-2.5 py-0.5 text-xs font-medium text-forest">{getRoleLabel(u.role)}</span>
+                    </td>
+                    <td className="px-3 py-3 text-charcoal/70 sm:px-5">{u.role === ROLES.USER ? Number(u.points ?? 0).toLocaleString() : '—'}</td>
+                    <td className="px-3 py-3 sm:px-5"><ApprovalBadge status={u.status} /></td>
+                    <td className="px-3 py-3 sm:px-5">
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={() => setViewing(u)} className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-charcoal hover:bg-mint-light">
+                          View
+                        </button>
+                        {u.role !== 'admin' && (
+                          <button
+                            type="button"
+                            onClick={() => setSuspendTarget(u)}
+                            className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                              u.status === ACCOUNT_STATUS.SUSPENDED ? 'border-emerald-200 text-forest hover:bg-mint-light' : 'border-red-200 text-red-700 hover:bg-red-50'
+                            }`}
+                          >
+                            {u.status === ACCOUNT_STATUS.SUSPENDED ? 'Activate' : 'Suspend'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-6 space-y-3 sm:hidden">
+            {pageItems.map((u) => (
+              <div key={u.id} className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-base font-semibold text-charcoal">{u.name}</p>
+                    <p className="mt-1 break-all text-sm text-charcoal/70">{u.email}</p>
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-mint-light px-2.5 py-1 text-[10px] font-semibold text-forest">{getRoleLabel(u.role)}</span>
+                </div>
+                <div className="mt-3 space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-charcoal/50">Points</span>
+                    <span className="font-medium text-charcoal">{u.role === ROLES.USER ? Number(u.points ?? 0).toLocaleString() : '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-charcoal/50">Status</span>
+                    <ApprovalBadge status={u.status} />
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setViewing(u)} className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-charcoal hover:bg-mint-light">
+                    View
+                  </button>
+                  {u.role !== 'admin' && (
+                    <button
+                      type="button"
+                      onClick={() => setSuspendTarget(u)}
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                        u.status === ACCOUNT_STATUS.SUSPENDED ? 'border-emerald-200 text-forest hover:bg-mint-light' : 'border-red-200 text-red-700 hover:bg-red-50'
+                      }`}
+                    >
+                      {u.status === ACCOUNT_STATUS.SUSPENDED ? 'Activate' : 'Suspend'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div className="px-5 pb-5">
             <Pagination page={page} totalPages={totalPages} onChange={setPage} />
           </div>
-        </div>
+        </>
       )}
 
       <Modal open={!!viewing} title={viewing?.name} onClose={() => setViewing(null)}>
@@ -189,9 +232,9 @@ export default function AdminUsers() {
 
 function Row({ label, value }) {
   return (
-    <div className="flex justify-between border-b border-emerald-50 pb-2">
+    <div className="flex flex-col gap-1 border-b border-emerald-50 pb-2 sm:flex-row sm:items-start sm:justify-between">
       <span className="text-charcoal/50">{label}</span>
-      <span className="font-medium text-charcoal">{value}</span>
+      <span className="break-words font-medium text-charcoal sm:text-right">{value}</span>
     </div>
   )
 }

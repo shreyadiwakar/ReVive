@@ -48,33 +48,61 @@ export default function CenterInventory() {
           <EmptyState icon={Archive} title="No records yet" description="Verified pickups will be logged here for your records." />
         </div>
       ) : (
-        <div className="mt-3 overflow-x-auto rounded-2xl bg-white shadow-sm border border-emerald-100/70">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-emerald-50 text-xs uppercase tracking-wide text-charcoal/40">
-                <th className="px-5 py-3">Request</th>
-                <th className="px-5 py-3">Resident</th>
-                <th className="px-5 py-3">Category</th>
-                <th className="px-5 py-3">Weight</th>
-                <th className="px-5 py-3">Verified</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRecords.map((p) => (
-                <tr key={p.id} className="border-b border-emerald-50 last:border-0">
-                  <td className="px-5 py-3 font-mono text-xs text-charcoal/50">{p.id}</td>
-                  <td className="px-5 py-3 text-charcoal">{p.userName}</td>
-                  <td className="px-5 py-3 text-charcoal/70">{p.wasteCategory}</td>
-                  <td className="px-5 py-3 text-charcoal/70">{formatKg(p.verifiedWeightKg)}</td>
-                  <td className="px-5 py-3 text-charcoal/50">{formatDateTime(p.pointsAwardedAt)}</td>
+        <>
+          <div className="mt-3 hidden overflow-x-auto rounded-2xl bg-white shadow-sm border border-emerald-100/70 sm:block">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-emerald-50 text-xs uppercase tracking-wide text-charcoal/40">
+                  <th className="px-5 py-3">Request</th>
+                  <th className="px-5 py-3">Resident</th>
+                  <th className="px-5 py-3">Category</th>
+                  <th className="px-5 py-3">Weight</th>
+                  <th className="px-5 py-3">Verified</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="px-5 pb-5">
-            <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
+              </thead>
+              <tbody>
+                {pageRecords.map((p) => (
+                  <tr key={p.id} className="border-b border-emerald-50 last:border-0">
+                    <td className="px-5 py-3 font-mono text-xs text-charcoal/50">{p.id}</td>
+                    <td className="px-5 py-3 text-charcoal">{p.userName}</td>
+                    <td className="px-5 py-3 text-charcoal/70">{p.wasteCategory}</td>
+                    <td className="px-5 py-3 text-charcoal/70">{formatKg(p.verifiedWeightKg)}</td>
+                    <td className="px-5 py-3 text-charcoal/50">{formatDateTime(p.pointsAwardedAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="px-5 pb-5">
+              <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
+            </div>
           </div>
-        </div>
+
+          <div className="mt-3 space-y-3 sm:hidden">
+            {pageRecords.map((p) => (
+              <div key={p.id} className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                <p className="font-mono text-[10px] text-charcoal/50">{p.id}</p>
+                <div className="mt-3 space-y-2 text-sm text-charcoal/70">
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Resident</span>
+                    <span className="font-medium text-charcoal">{p.userName}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Category</span>
+                    <span className="font-medium text-charcoal">{p.wasteCategory}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Weight</span>
+                    <span className="font-medium text-charcoal">{formatKg(p.verifiedWeightKg)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Verified</span>
+                    <span className="font-medium text-charcoal">{formatDateTime(p.pointsAwardedAt)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )

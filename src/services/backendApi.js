@@ -77,17 +77,18 @@ export function normalizePickup(pickup, session = loadSession()) {
 }
 
 export async function loadBackendSnapshot(currentDb, session) {
-  const centersData = await apiRequest('/centers')
+  const [centersData, couponsData] = await Promise.all([
+    apiRequest('/centers'),
+    apiRequest('/coupons').catch((error) => {
+      if (error.status === 404) return { items: [] }
+      throw error
+    }),
+  ])
   const centers = centersData.items || []
-  if (!session?.userId) return { ...currentDb, centers }
+  const coupons = couponsData.items || []
+  if (!session?.userId) return { ...currentDb, centers, coupons }
   // Keep the rest of the dashboard usable if it is talking to an older local
   // API process that does not yet expose the coupon catalog route.
-  let coupons = []
-  try {
-    coupons = (await apiRequest('/coupons')).items || []
-  } catch (error) {
-    if (error.status !== 404) throw error
-  }
 
   if (session.role === 'admin') {
     const data = await apiRequest('/admin/snapshot')

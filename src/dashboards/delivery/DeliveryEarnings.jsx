@@ -49,42 +49,76 @@ export default function DeliveryEarnings() {
           <EmptyState icon={DollarSign} title="No verified earnings yet" description="A delivery appears here after its recycling weight is verified by the center." />
         </div>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-2xl border border-emerald-100/70 bg-white shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-emerald-50 text-xs uppercase tracking-wide text-charcoal/40">
-                <th className="px-5 py-3">Request</th>
-                <th className="px-5 py-3">Verified</th>
-                <th className="px-5 py-3">Weight</th>
-                <th className="px-5 py-3">Distance</th>
-                <th className="px-5 py-3">Payment</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagePickups.map((pickup) => {
-                const item = breakdownByPickup.get(pickup.id)
-                return (
-                  <tr key={pickup.id} className="border-b border-emerald-50 last:border-0 align-top">
-                    <td className="px-5 py-3 font-mono text-xs text-charcoal/60">{pickup.id}</td>
-                    <td className="px-5 py-3 text-charcoal/70">{formatDate(item.verifiedAt)}</td>
-                    <td className="px-5 py-3 text-charcoal">{formatKg(item.weightKg)}</td>
-                    <td className="px-5 py-3 text-charcoal/70">{item.distanceKm == null ? 'Not recorded' : `${item.distanceKm.toFixed(1)} km`}</td>
-                    <td className="px-5 py-3">
-                      <strong className="text-forest">{formatRupees(item.total)}</strong>
-                      <details className="mt-1 text-xs text-charcoal/55">
-                        <summary className="cursor-pointer">Details</summary>
-                        <p className="mt-1">Base {formatRupees(item.baseFee)} · Distance {formatRupees(item.distanceAllowance)} · Weight {formatRupees(item.weightAllowance)} · Bonuses {formatRupees(item.heavyLoadBonus + item.verifiedRecyclingBonus + item.pickupCompletionBonus + item.reliabilityBonus)}</p>
-                      </details>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-          <div className="px-5 pb-5">
-            <Pagination page={Math.min(page, totalPages)} totalPages={totalPages} onChange={setPage} />
+        <>
+          <div className="mt-6 hidden overflow-x-auto rounded-2xl border border-emerald-100/70 bg-white shadow-sm sm:block">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-emerald-50 text-xs uppercase tracking-wide text-charcoal/40">
+                  <th className="px-5 py-3">Request</th>
+                  <th className="px-5 py-3">Verified</th>
+                  <th className="px-5 py-3">Weight</th>
+                  <th className="px-5 py-3">Distance</th>
+                  <th className="px-5 py-3">Payment</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagePickups.map((pickup) => {
+                  const item = breakdownByPickup.get(pickup.id)
+                  return (
+                    <tr key={pickup.id} className="border-b border-emerald-50 last:border-0 align-top">
+                      <td className="px-5 py-3 font-mono text-xs text-charcoal/60">{pickup.id}</td>
+                      <td className="px-5 py-3 text-charcoal/70">{formatDate(item.verifiedAt)}</td>
+                      <td className="px-5 py-3 text-charcoal">{formatKg(item.weightKg)}</td>
+                      <td className="px-5 py-3 text-charcoal/70">{item.distanceKm == null ? 'Not recorded' : `${item.distanceKm.toFixed(1)} km`}</td>
+                      <td className="px-5 py-3">
+                        <strong className="text-forest">{formatRupees(item.total)}</strong>
+                        <details className="mt-1 text-xs text-charcoal/55">
+                          <summary className="cursor-pointer">Details</summary>
+                          <p className="mt-1">Base {formatRupees(item.baseFee)} · Distance {formatRupees(item.distanceAllowance)} · Weight {formatRupees(item.weightAllowance)} · Bonuses {formatRupees(item.heavyLoadBonus + item.verifiedRecyclingBonus + item.pickupCompletionBonus + item.reliabilityBonus)}</p>
+                        </details>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            <div className="px-5 pb-5">
+              <Pagination page={Math.min(page, totalPages)} totalPages={totalPages} onChange={setPage} />
+            </div>
           </div>
-        </div>
+
+          <div className="mt-6 space-y-3 sm:hidden">
+            {pagePickups.map((pickup) => {
+              const item = breakdownByPickup.get(pickup.id)
+              return (
+                <div key={pickup.id} className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-mono text-[10px] text-charcoal/60">{pickup.id}</p>
+                    <strong className="text-forest">{formatRupees(item.total)}</strong>
+                  </div>
+                  <div className="mt-3 space-y-2 text-sm text-charcoal/70">
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Verified</span>
+                      <span className="font-medium text-charcoal">{formatDate(item.verifiedAt)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Weight</span>
+                      <span className="font-medium text-charcoal">{formatKg(item.weightKg)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Distance</span>
+                      <span className="font-medium text-charcoal">{item.distanceKm == null ? 'Not recorded' : `${item.distanceKm.toFixed(1)} km`}</span>
+                    </div>
+                  </div>
+                  <details className="mt-3 text-xs text-charcoal/55">
+                    <summary className="cursor-pointer">Details</summary>
+                    <p className="mt-1">Base {formatRupees(item.baseFee)} · Distance {formatRupees(item.distanceAllowance)} · Weight {formatRupees(item.weightAllowance)} · Bonuses {formatRupees(item.heavyLoadBonus + item.verifiedRecyclingBonus + item.pickupCompletionBonus + item.reliabilityBonus)}</p>
+                  </details>
+                </div>
+              )
+            })}
+          </div>
+        </>
       )}
 
       <p className="mt-4 text-xs text-charcoal/55">Earnings are added after the recycling center verifies a pickup. Tap “Details” on a row to see a short breakdown.</p>

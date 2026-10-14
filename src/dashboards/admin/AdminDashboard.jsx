@@ -101,28 +101,43 @@ export default function AdminDashboard() {
         {transactions.length === 0 ? (
           <p className="mt-3 text-sm text-charcoal/50">No reward activity yet.</p>
         ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs uppercase tracking-wide text-charcoal/40">
-                  <th className="pb-2 pr-4">User</th>
-                  <th className="pb-2 pr-4">Description</th>
-                  <th className="pb-2 pr-4">Amount</th>
-                  <th className="pb-2 pr-4">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((t) => (
-                  <tr key={t.id} className="border-t border-emerald-50">
-                    <td className="py-2.5 pr-4 text-charcoal">{t.userName}</td>
-                    <td className="py-2.5 pr-4 text-charcoal/70">{t.description}</td>
-                    <td className={`py-2.5 pr-4 font-semibold ${t.amount > 0 ? 'text-forest' : 'text-red-600'}`}>{t.amount > 0 ? `+${t.amount}` : t.amount}</td>
-                    <td className="py-2.5 pr-4 text-charcoal/50">{formatDateTime(t.createdAt)}</td>
+          <>
+            <div className="mt-3 hidden overflow-x-auto sm:block">
+              <table className="w-full min-w-0 text-left text-sm">
+                <thead>
+                  <tr className="text-xs uppercase tracking-wide text-charcoal/40">
+                    <th className="pb-2 pr-3 sm:pr-4">User</th>
+                    <th className="pb-2 pr-3 sm:pr-4">Description</th>
+                    <th className="pb-2 pr-3 sm:pr-4">Amount</th>
+                    <th className="pb-2 pr-3 sm:pr-4">Date</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {transactions.map((t) => (
+                    <tr key={t.id} className="border-t border-emerald-50 align-top">
+                      <td className="py-2.5 pr-3 text-charcoal sm:pr-4">{t.userName}</td>
+                      <td className="break-words py-2.5 pr-3 text-charcoal/70 sm:pr-4">{t.description}</td>
+                      <td className={`py-2.5 pr-3 font-semibold sm:pr-4 ${t.amount > 0 ? 'text-forest' : 'text-red-600'}`}>{t.amount > 0 ? `+${t.amount}` : t.amount}</td>
+                      <td className="py-2.5 pr-3 text-charcoal/50 sm:pr-4">{formatDateTime(t.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-3 space-y-3 sm:hidden">
+              {transactions.map((t) => (
+                <div key={t.id} className="rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-charcoal">{t.userName}</p>
+                    <p className={`font-semibold ${t.amount > 0 ? 'text-forest' : 'text-red-600'}`}>{t.amount > 0 ? `+${t.amount}` : t.amount}</p>
+                  </div>
+                  <p className="mt-2 text-sm text-charcoal/70">{t.description}</p>
+                  <p className="mt-2 text-xs text-charcoal/50">{formatDateTime(t.createdAt)}</p>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

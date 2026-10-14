@@ -114,30 +114,57 @@ export default function CenterVerification() {
         {verified.length === 0 ? (
           <p className="mt-3 text-sm text-charcoal/50">No verification records yet.</p>
         ) : (
-          <div className="mt-3 overflow-x-auto rounded-2xl bg-white shadow-sm border border-emerald-100/70">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-emerald-50 text-xs uppercase tracking-wide text-charcoal/40">
-                  <th className="px-5 py-3">Resident</th>
-                  <th className="px-5 py-3">Category</th>
-                  <th className="px-5 py-3">Weight</th>
-                  <th className="px-5 py-3">Points</th>
-                  <th className="px-5 py-3">Verified</th>
-                </tr>
-              </thead>
-              <tbody>
-                {verified.map((p) => (
-                  <tr key={p.id} className="border-b border-emerald-50 last:border-0">
-                    <td className="px-5 py-3 text-charcoal">{p.userName}</td>
-                    <td className="px-5 py-3 text-charcoal/70">{p.wasteCategory}</td>
-                    <td className="px-5 py-3 text-charcoal/70">{formatKg(p.verifiedWeightKg)}</td>
-                    <td className="px-5 py-3 font-semibold text-forest">+{p.pointsAwarded}</td>
-                    <td className="px-5 py-3 text-charcoal/50">{formatDateTime(p.pointsAwardedAt)}</td>
+          <>
+            <div className="mt-3 hidden overflow-x-auto rounded-2xl bg-white shadow-sm border border-emerald-100/70 sm:block">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-emerald-50 text-xs uppercase tracking-wide text-charcoal/40">
+                    <th className="px-5 py-3">Resident</th>
+                    <th className="px-5 py-3">Category</th>
+                    <th className="px-5 py-3">Weight</th>
+                    <th className="px-5 py-3">Points</th>
+                    <th className="px-5 py-3">Verified</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {verified.map((p) => (
+                    <tr key={p.id} className="border-b border-emerald-50 last:border-0">
+                      <td className="px-5 py-3 text-charcoal">{p.userName}</td>
+                      <td className="px-5 py-3 text-charcoal/70">{p.wasteCategory}</td>
+                      <td className="px-5 py-3 text-charcoal/70">{formatKg(p.verifiedWeightKg)}</td>
+                      <td className="px-5 py-3 font-semibold text-forest">+{p.pointsAwarded}</td>
+                      <td className="px-5 py-3 text-charcoal/50">{formatDateTime(p.pointsAwardedAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-3 space-y-3 sm:hidden">
+              {verified.map((p) => (
+                <div key={p.id} className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-charcoal">{p.userName}</p>
+                    <span className="font-semibold text-forest">+{p.pointsAwarded}</span>
+                  </div>
+                  <div className="mt-3 space-y-2 text-sm text-charcoal/70">
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Category</span>
+                      <span className="font-medium text-charcoal">{p.wasteCategory}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Weight</span>
+                      <span className="font-medium text-charcoal">{formatKg(p.verifiedWeightKg)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Verified</span>
+                      <span>{formatDateTime(p.pointsAwardedAt)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </section>
 

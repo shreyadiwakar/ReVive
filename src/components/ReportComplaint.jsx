@@ -99,7 +99,7 @@ export default function ReportComplaint() {
               </button>
             )}
           </div>
-          <div className="mt-3 overflow-x-auto rounded-xl border border-emerald-100/70">
+          <div className="mt-3 hidden overflow-x-auto rounded-xl border border-emerald-100/70 sm:block">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-emerald-50 text-xs uppercase tracking-wide text-charcoal/40">
@@ -130,6 +130,30 @@ export default function ReportComplaint() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="mt-3 space-y-3 sm:hidden">
+            {(showComplaintHistory ? myComplaints.slice((safeHistoryPage - 1) * 8, safeHistoryPage * 8) : myComplaints.slice(0, 2)).map((complaint) => (
+              <div key={complaint.id} className="rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold text-charcoal">{complaint.subject}</p>
+                  <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${complaint.status === 'resolved' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                    {complaint.status === 'resolved' ? 'Resolved' : 'Open'}
+                  </span>
+                </div>
+                <div className="mt-2 space-y-2 text-sm text-charcoal/70">
+                  <div className="flex items-center justify-between gap-3">
+                    <span>Submitted</span>
+                    <span>{formatDateTime(complaint.createdAt)}</span>
+                  </div>
+                </div>
+                {complaint.status === 'open' && (
+                  <button type="button" onClick={() => removeComplaint(complaint)} aria-label={`Delete complaint: ${complaint.subject}`} className="mt-3 inline-flex items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50">
+                    <Trash2 size={13} /> Delete
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
           {showComplaintHistory && <Pagination page={safeHistoryPage} totalPages={historyPages} onChange={setHistoryPage} />}
         </div>
