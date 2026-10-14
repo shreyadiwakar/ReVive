@@ -41,10 +41,18 @@ export default function UserSchedulePickup() {
 
   const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
   const updatePickupLocation = (patch) => {
-    if (Object.hasOwn(patch, 'latitude') || Object.hasOwn(patch, 'longitude')) {
-      setPickupLocation((current) => ({ ...current, ...patch }))
+    const normalized = { ...patch }
+    if (Object.hasOwn(normalized, 'address')) normalized.pickupAddress = normalized.address
+    if (Object.hasOwn(normalized, 'city')) normalized.pickupCity = normalized.city
+    delete normalized.address
+    delete normalized.city
+
+    if (Object.hasOwn(normalized, 'latitude') || Object.hasOwn(normalized, 'longitude')) {
+      setPickupLocation((current) => ({ ...current, latitude: normalized.latitude ?? current.latitude, longitude: normalized.longitude ?? current.longitude }))
+      delete normalized.latitude
+      delete normalized.longitude
     }
-    setForm((current) => ({ ...current, ...patch }))
+    setForm((current) => ({ ...current, ...normalized }))
   }
 
   const matchingCenters = useMemo(() => db.centers.filter((center) =>
