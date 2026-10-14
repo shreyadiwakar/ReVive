@@ -139,14 +139,9 @@ export default function RegisterDelivery() {
             </Field>
           </div>
 
-          <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-900">
-            <BadgeCheck size={18} className="mt-0.5 shrink-0" />
-            <span>Identity verification: not yet submitted. You'll be prompted to upload ID documents after admin review begins (simulated).</span>
-          </div>
-
           <label className="flex items-start gap-2 text-sm text-charcoal/70">
             <input type="checkbox" checked={form.terms} onChange={update('terms')} className="mt-0.5 h-4 w-4 rounded border-emerald-300 text-forest" />
-            I agree to the ReVive partner terms and simulated data handling for this demo.
+            I agree to the ReVive partner terms.
           </label>
           {errors.terms && <p className="text-xs text-red-600">{errors.terms}</p>}
 

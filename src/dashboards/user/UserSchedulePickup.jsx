@@ -68,6 +68,9 @@ export default function UserSchedulePickup() {
   const rankedPageCenters = rankedCenters.slice((safeCenterPage - 1) * centersPerPage, safeCenterPage * centersPerPage)
   const recommendedCenter = rankedCenters.find((center) => centerDistances.has(center.id))
   const selectedCenter = matchingCenters.find((c) => c.id === form.centerId) || recommendedCenter
+  const selectedCenterDistance = selectedCenter && isValidLocation(pickupLocation) && isValidLocation(selectedCenter)
+    ? (centerDistances.get(selectedCenter.id) ?? { km: haversineKm(pickupLocation, selectedCenter), kind: 'straight' })
+    : null
   const estimatedPoints = calculateEstimatedPoints(form.wasteCategory, Number(form.quantityKg || 0))
 
   useEffect(() => {
@@ -262,30 +265,35 @@ export default function UserSchedulePickup() {
             {matchingCenters.length === 0 && (
               <p className="text-sm text-charcoal/60">No centers currently accept {form.wasteCategory}. Try a different category.</p>
             )}
-            {rankedPageCenters.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                disabled={!isValidLocation(c) || !centerDistances.has(c.id)}
-                onClick={() => setForm((f) => ({ ...f, centerId: c.id }))}
-                className={`w-full rounded-xl border p-4 text-left transition ${
-                  selectedCenter?.id === c.id ? 'border-forest bg-mint-light' : 'border-emerald-200 hover:bg-mint-light/50'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-charcoal">{c.name}</span>
-                  {recommendedCenter?.id === c.id && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Nearest recommended</span>}
-                </div>
-                <p className="mt-1 flex items-center gap-1.5 text-sm text-charcoal/60"><MapPin size={14} /> {c.address}</p>
-                <p className="mt-1 flex items-center gap-1.5 text-sm text-charcoal/60"><Clock size={14} /> {c.operatingHours}</p>
-                {centerDistances.has(c.id) ? (
-                  <div className="mt-3 inline-flex flex-col rounded-lg bg-mint-light px-3 py-2">
-                    <span className="text-lg font-bold text-forest">{centerDistances.get(c.id).km.toFixed(1)} km</span>
-                    <span className="text-xs text-charcoal/60">Pickup to center · {centerDistances.get(c.id).kind === 'road' ? 'by road' : 'straight-line estimate'}</span>
+            {rankedPageCenters.map((c) => {
+              const centerDistance = isValidLocation(pickupLocation) && isValidLocation(c)
+                ? (centerDistances.get(c.id) ?? { km: haversineKm(pickupLocation, c), kind: 'straight' })
+                : null
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  disabled={!centerDistance}
+                  onClick={() => setForm((f) => ({ ...f, centerId: c.id }))}
+                  className={`w-full rounded-xl border p-4 text-left transition ${
+                    selectedCenter?.id === c.id ? 'border-forest bg-mint-light' : 'border-emerald-200 hover:bg-mint-light/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-charcoal">{c.name}</span>
+                    {recommendedCenter?.id === c.id && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Nearest recommended</span>}
                   </div>
-                ) : <p className="mt-1 text-sm font-medium text-amber-800">Distance unavailable: this center needs a saved map pin.</p>}
-              </button>
-            ))}
+                  <p className="mt-1 flex items-center gap-1.5 text-sm text-charcoal/60"><MapPin size={14} /> {c.address}</p>
+                  <p className="mt-1 flex items-center gap-1.5 text-sm text-charcoal/60"><Clock size={14} /> {c.operatingHours}</p>
+                  {centerDistance ? (
+                    <div className="mt-3 inline-flex flex-col rounded-lg bg-mint-light px-3 py-2">
+                      <span className="text-lg font-bold text-forest">{centerDistance.km.toFixed(1)} km</span>
+                      <span className="text-xs text-charcoal/60">Pickup to center · {centerDistance.kind === 'road' ? 'by road' : 'straight-line estimate'}</span>
+                    </div>
+                  ) : <p className="mt-1 text-sm font-medium text-amber-800">Distance unavailable: this center needs a saved map pin.</p>}
+                </button>
+              )
+            })}
             <Pagination page={safeCenterPage} totalPages={centerPageCount} onChange={setCenterPage} />
           </div>
         )}
@@ -297,6 +305,7 @@ export default function UserSchedulePickup() {
             <Row label="Address" value={form.pickupAddress} />
             <Row label="Scheduled" value={`${form.date} at ${form.time}`} />
             <Row label="Center" value={selectedCenter.name} />
+            {selectedCenterDistance && <Row label="Distance" value={`${selectedCenterDistance.km.toFixed(1)} km · ${selectedCenterDistance.kind === 'road' ? 'by road' : 'straight-line estimate'}`} />}
             {form.instructions && <Row label="Instructions" value={form.instructions} />}
             <div className="mt-4 rounded-xl bg-mint-light px-4 py-3 font-semibold text-forest">
               Estimated reward: {estimatedPoints} points (estimate)

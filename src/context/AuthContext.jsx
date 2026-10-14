@@ -12,7 +12,7 @@ import { ROLES } from '../utils/constants'
 
 const AuthContext = createContext(null)
 
-function normalizeRole(role) {
+export function normalizeRole(role) {
   return role === 'resident' ? ROLES.USER : role
 }
 
