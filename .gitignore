@@ -1,9 +1,12 @@
 node_modules/
-dist/
 backend/node_modules/
+dist/
 backend/dist/
 backend/.aws-sam/
 .env
 .env.*
 !.env.example
 *.log
+fn/
+fn.zip
+backend/local-env.json

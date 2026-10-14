@@ -140,15 +140,33 @@ The SAM template defines an API Gateway HTTP API, one Lambda function, a Cognito
 ## Repository layout
 
 ```text
-src/
-  components/       Shared interface components
-  context/          Authentication and application data state
-  dashboards/       Resident, delivery, center, and admin workspaces
-  pages/            Landing, sign-in, and account registration pages
-  services/         API client, data handling, maps, and delivery earnings
-backend/
-  src/              TypeScript Lambda handler
-  scripts/          Local database, admin, and API utilities
-  template.yaml     AWS SAM architecture
-docs/               API contract, data design, and project materials
+.
+├── api/
+│   └── [...path].js            Vercel serverless API
+├── backend/
+│   ├── scripts/                Local database, admin, API, and smoke-test tools
+│   ├── src/handler.ts          AWS Lambda handler
+│   ├── docker-compose.yml      DynamoDB Local service
+│   ├── local-env.json          Local SAM environment settings
+│   ├── samconfig.toml          SAM deployment settings
+│   ├── template.yaml           AWS SAM resources
+│   └── package.json
+├── docs/                       API, data design, and deployment guides
+├── public/                     App icons and static assets
+├── src/
+│   ├── components/             Shared interface components
+│   ├── context/                Authentication and app state
+│   ├── dashboards/             Admin, center, delivery, and resident pages
+│   ├── pages/                  Landing, sign-in, and registration screens
+│   ├── services/               API, data, maps, and earnings logic
+│   └── utils/                  Shared validation and formatting
+├── supabase/schema.sql         Vercel backend database schema
+├── .env.example                Local frontend environment template
+├── amplify.yml                 Amplify frontend build settings
+├── index.html                  Vite HTML entry point
+├── package.json                Frontend scripts and dependencies
+├── vercel.json                 Vercel build and SPA routing settings
+└── vite.config.js              Vite configuration
 ```
+
+This is a source-oriented overview; dependency folders, `dist/`, and the checked-in bundled `fn/` output and `fn.zip` archive are omitted. Local `.env.local` settings are not part of the source layout.
