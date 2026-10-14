@@ -339,10 +339,57 @@ function authenticatedSubject(event: APIGatewayProxyEventV2) {
   return typeof claims?.sub === 'string' ? claims.sub : null
 }
 
-function hasCognitoGroup(event: APIGatewayProxyEventV2, group: string) {
+function normalizeCognitoGroupClaimValue(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => normalizeCognitoGroupClaimValue(entry))
+  }
+
+  if (typeof value !== 'string') return []
+
+  const claim = value.trim()
+  if (!claim) return []
+
+  try {
+    const parsed = JSON.parse(claim)
+    return normalizeCognitoGroupClaimValue(parsed)
+  } catch {
+    // API Gateway sometimes serializes an array-valued JWT claim as a string.
+    // Some authorizers emit the array as single-quoted or comma-delimited text.
+  }
+
+  return claim
+    .split(',')
+    .map((entry) => entry.trim().replace(/^[\[\]"'\\]+|[\[\]"'\\]+$/g, ''))
+    .filter((entry) => entry.length > 0)
+}
+
+function safeCognitoGroupDiagnostics(event: APIGatewayProxyEventV2, group: string) {
   const context = event.requestContext as APIGatewayProxyEventV2WithJWTAuthorizer['requestContext']
-  const groups = context.authorizer?.jwt?.claims['cognito:groups']
-  return Array.isArray(groups) ? groups.includes(group) : typeof groups === 'string' && groups.split(',').includes(group)
+  const claims = context.authorizer?.jwt?.claims ?? {}
+  const rawGroups = claims['cognito:groups'] ?? claims.groups
+  const normalizedGroups = normalizeCognitoGroupClaimValue(rawGroups)
+
+  return {
+    method: event.requestContext.http?.method ?? 'UNKNOWN',
+    path: event.rawPath ?? '/unknown',
+    hasClaims: Object.keys(claims).length > 0,
+    hasGroupClaim: typeof rawGroups !== 'undefined',
+    claimType: Array.isArray(rawGroups) ? 'array' : typeof rawGroups,
+    requestedGroup: group,
+    normalizedGroups,
+    matchesGroup: normalizedGroups.includes(group),
+  }
+}
+
+export function hasCognitoGroupClaim(value: unknown, group: string) {
+  return normalizeCognitoGroupClaimValue(value).includes(group)
+}
+
+export function hasCognitoGroup(event: APIGatewayProxyEventV2, group: string) {
+  const context = event.requestContext as APIGatewayProxyEventV2WithJWTAuthorizer['requestContext']
+  const claims = context.authorizer?.jwt?.claims ?? {}
+  const groups = claims['cognito:groups'] ?? claims.groups
+  return hasCognitoGroupClaim(groups, group)
 }
 
 async function signUp(event: Parameters<APIGatewayProxyHandlerV2>[0]) {
@@ -1766,7 +1813,12 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
   try {
     if (path.startsWith('/admin/')) {
-      if (!hasCognitoGroup(event, 'PlatformAdmins') || !(await isApprovedAccount(subject, 'admin'))) {
+      if (!hasCognitoGroup(event, 'PlatformAdmins')) {
+        console.warn('Admin authorization denied: PlatformAdmins group check failed.', safeCognitoGroupDiagnostics(event, 'PlatformAdmins'))
+        return json(403, { error: 'An active administrator account is required.' })
+      }
+      if (!(await isApprovedAccount(subject, 'admin'))) {
+        console.warn('Admin authorization denied: DynamoDB admin profile check failed.')
         return json(403, { error: 'An active administrator account is required.' })
       }
       if (method === 'GET' && path === '/admin/snapshot') return await getAdminSnapshot()
