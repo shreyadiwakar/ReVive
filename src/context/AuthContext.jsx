@@ -12,6 +12,10 @@ import { ROLES } from '../utils/constants'
 
 const AuthContext = createContext(null)
 
+function normalizeRole(role) {
+  return role === 'resident' ? ROLES.USER : role
+}
+
 function restoreSession() {
   const stored = loadSession()
   if (backendEnabled && stored && !stored.backendUser) {
@@ -52,16 +56,19 @@ export function AuthProvider({ children }) {
   const user = useMemo(() => {
     void tick
     if (!session?.userId) return null
-    if (session.backendUser) return { ...session, id: session.userId }
-    return findUserById(session.userId)
+    const normalizedSession = session?.role ? { ...session, role: normalizeRole(session.role) } : session
+    if (normalizedSession.backendUser) return { ...normalizedSession, id: normalizedSession.userId }
+    return findUserById(normalizedSession.userId)
   }, [session, tick])
 
   const login = async (email, password, expectedRole) => {
     if (backendEnabled) {
       try {
         const result = await loginBackendUser(email, password)
-        const nextSession = { ...result.session, userId: result.session.id, backendUser: true }
-        if (expectedRole && nextSession.role !== expectedRole) return { ok: false, error: 'This login is not valid for that account type.' }
+        const rawRole = result.session?.role ?? result.session?.accountRole ?? 'user'
+        const normalizedRole = normalizeRole(rawRole)
+        const nextSession = { ...result.session, userId: result.session.id ?? result.session.userId, role: normalizedRole, backendUser: true }
+        if (expectedRole && normalizeRole(nextSession.role) !== normalizeRole(expectedRole)) return { ok: false, error: 'This login is not valid for that account type.' }
         saveSession(nextSession)
         setSession(nextSession)
         return { ok: true, session: nextSession }
@@ -149,11 +156,12 @@ export function useAuth() {
 }
 
 export function roleHomePath(role) {
+  const normalizedRole = normalizeRole(role)
   const map = {
     [ROLES.USER]: '/user/dashboard',
     [ROLES.DELIVERY]: '/delivery/dashboard',
     [ROLES.CENTER]: '/center/dashboard',
     [ROLES.ADMIN]: '/admin/dashboard',
   }
-  return map[role] || '/'
+  return map[normalizedRole] || '/'
 }

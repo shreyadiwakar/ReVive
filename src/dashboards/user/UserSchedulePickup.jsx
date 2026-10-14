@@ -23,7 +23,6 @@ export default function UserSchedulePickup() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [confirmed, setConfirmed] = useState(null)
-  const [pickupLocation, setPickupLocation] = useState({ latitude: null, longitude: null })
   const [centerDistances, setCenterDistances] = useState(new Map())
   const [routing, setRouting] = useState(false)
   const [centerPage, setCenterPage] = useState(1)
@@ -33,11 +32,15 @@ export default function UserSchedulePickup() {
     quantityKg: '',
     pickupAddress: user?.address || '',
     pickupCity: user?.city || '',
+    latitude: null,
+    longitude: null,
     date: '',
     time: '',
     instructions: '',
     centerId: '',
   })
+
+  const pickupLocation = { latitude: form.latitude, longitude: form.longitude }
 
   const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
   const updatePickupLocation = (patch) => {
@@ -47,12 +50,12 @@ export default function UserSchedulePickup() {
     delete normalized.address
     delete normalized.city
 
-    if (Object.hasOwn(normalized, 'latitude') || Object.hasOwn(normalized, 'longitude')) {
-      setPickupLocation((current) => ({ ...current, latitude: normalized.latitude ?? current.latitude, longitude: normalized.longitude ?? current.longitude }))
-      delete normalized.latitude
-      delete normalized.longitude
-    }
-    setForm((current) => ({ ...current, ...normalized }))
+    setForm((current) => ({
+      ...current,
+      ...normalized,
+      ...(Object.hasOwn(normalized, 'latitude') ? { latitude: normalized.latitude } : {}),
+      ...(Object.hasOwn(normalized, 'longitude') ? { longitude: normalized.longitude } : {}),
+    }))
   }
 
   const matchingCenters = useMemo(() => db.centers.filter((center) =>
@@ -121,7 +124,7 @@ export default function UserSchedulePickup() {
         ? `${form.pickupAddress}, ${form.pickupCity}` : form.pickupAddress
       const payload = { userId: user.id, wasteCategory: form.wasteCategory, quantityKg: form.quantityKg,
         pickupAddress, scheduledAt, instructions: form.instructions,
-        pickupLatitude: pickupLocation.latitude, pickupLongitude: pickupLocation.longitude,
+        pickupLatitude: form.latitude, pickupLongitude: form.longitude,
         centerId: selectedCenter.id, centerName: selectedCenter.name, residentName: user.name }
       if (backendEnabled) {
         const pickup = await createBackendPickup(payload)
