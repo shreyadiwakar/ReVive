@@ -65,8 +65,10 @@ export default function DeliveryJobDetail() {
   const calculateRoute = async () => {
     setCalculatingRoute(true); setRouteError(''); setRouteLegs(null)
     try {
-      if (!isValidLocation(pickup)) throw new Error('This pickup has no map pin. Ask the resident to add it to the pickup request.')
-      if (!isValidLocation(center)) throw new Error('This center has no map pin. The center must save its facility location in Profile.')
+      const pickupLocation = pickup ? { latitude: pickup.pickupLatitude ?? pickup.latitude, longitude: pickup.pickupLongitude ?? pickup.longitude } : null
+      const centerLocation = center ? { latitude: center.latitude, longitude: center.longitude } : null
+      if (!isValidLocation(pickupLocation)) throw new Error('This pickup has no map pin. Ask the resident to add it to the pickup request.')
+      if (!isValidLocation(centerLocation)) throw new Error('This center has no map pin. The center must save its facility location in Profile.')
       let location
       let locationSource = 'Current device location'
       try { location = await getCurrentLocation() }
@@ -78,7 +80,7 @@ export default function DeliveryJobDetail() {
       setDriverLocation(location)
       setDriverLocationSource(locationSource)
       const [toPickup, toCenter] = await Promise.all([
-        getDrivingDistance(location, pickup), getDrivingDistance(pickup, center),
+        getDrivingDistance(location, pickupLocation), getDrivingDistance(pickupLocation, centerLocation),
       ])
       if (!toPickup || !toCenter) throw new Error('Could not calculate both route segments. Try again.')
       setRouteLegs({ toPickup, toCenter, total: { km: toPickup.km + toCenter.km, kind: toPickup.kind === 'road' && toCenter.kind === 'road' ? 'road' : 'straight' } })

@@ -41,16 +41,21 @@ export default function UserTrackPickup() {
   useEffect(() => {
     let active = true
     const center = db.centers.find((item) => item.id === pickup?.centerId)
-    if (!isValidLocation(pickup) || !isValidLocation(center)) {
+    const pickupLocation = pickup ? { latitude: pickup.pickupLatitude ?? pickup.latitude, longitude: pickup.pickupLongitude ?? pickup.longitude } : null
+    const centerLocation = center ? { latitude: center.latitude, longitude: center.longitude } : null
+
+    if (!isValidLocation(pickupLocation) || !isValidLocation(centerLocation)) {
       setCenterDistance(null)
       return () => { active = false }
     }
-    setCenterDistance({ km: haversineKm(pickup, center), kind: 'straight' })
-    getDrivingDistance(pickup, center).then((distance) => {
-      if (active) setCenterDistance(distance)
-    }).catch(() => { if (active) setCenterDistance(null) })
+
+    const straightDistance = { km: haversineKm(pickupLocation, centerLocation), kind: 'straight' }
+    setCenterDistance(straightDistance)
+    getDrivingDistance(pickupLocation, centerLocation).then((distance) => {
+      if (active) setCenterDistance(distance ?? straightDistance)
+    }).catch(() => { if (active) setCenterDistance(straightDistance) })
     return () => { active = false }
-  }, [pickup?.id, pickup?.pickupLatitude, pickup?.pickupLongitude, pickup?.centerId, db.centers])
+  }, [pickup?.id, pickup?.pickupLatitude, pickup?.pickupLongitude, pickup?.latitude, pickup?.longitude, pickup?.centerId, db.centers])
 
   if (loading) return <p className="text-sm text-charcoal/60">Loading pickup…</p>
 
