@@ -3,6 +3,7 @@ import { loadSession, saveSession } from './storage'
 const apiBase = import.meta.env.VITE_API_BASE_URL || ''
 const apiMode = import.meta.env.VITE_API_MODE || ''
 export const awsApiEnabled = apiMode === 'aws' && !!apiBase
+export const passwordResetEnabled = awsApiEnabled
 export const backendEnabled = ['local', 'vercel', 'aws'].includes(apiMode) && !!apiBase
 
 function headers() {
