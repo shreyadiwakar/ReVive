@@ -1,8 +1,8 @@
 import { ArrowLeft, LogIn, ShieldAlert } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import { awsApiEnabled } from '../services/backendApi'
+import { normalizeRole, roleHomePath, useAuth } from '../context/AuthContext'
+import { passwordResetEnabled } from '../services/backendApi'
 import { ROLES } from '../utils/constants'
 
 export default function Login() {
@@ -24,11 +24,12 @@ export default function Login() {
         setError(result.error)
         return
       }
-      if (result.session.role === ROLES.ADMIN) {
+      const sessionRole = normalizeRole(result.session.role)
+      if (sessionRole === ROLES.ADMIN) {
         setError('Administrator accounts must sign in from the admin login page.')
         return
       }
-      navigate('/')
+      navigate(roleHomePath(sessionRole), { replace: true })
     } finally {
       setBusy(false)
     }
@@ -76,7 +77,7 @@ export default function Login() {
                 className="w-full rounded-xl border border-emerald-200 px-3.5 py-2.5 text-sm focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
               />
             </div>
-            {awsApiEnabled && <div className="-mt-2 text-right"><Link to="/forgot-password" state={{ email }} className="text-sm font-semibold text-forest hover:underline">Forgot password?</Link></div>}
+            {passwordResetEnabled && <div className="-mt-2 flex justify-end"><Link to="/forgot-password" state={{ email }} className="text-sm font-semibold text-forest hover:underline">Forgot password?</Link></div>}
               <button
               type="submit"
               disabled={busy}
