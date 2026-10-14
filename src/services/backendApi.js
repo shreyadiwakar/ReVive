@@ -61,12 +61,17 @@ export async function apiRequest(path, { method = 'GET', body } = {}) {
 
 export function normalizePickup(pickup, session = loadSession()) {
   if (!pickup) return pickup
+  const partnerName = pickup.deliveryPartnerName
+    ?? pickup.partnerName
+    ?? pickup.assignedPartnerName
+    ?? (pickup.deliveryPartnerId && session?.role === 'delivery' && pickup.deliveryPartnerId === session.userId ? session.name : null)
+
   return {
     ...pickup,
     userId: pickup.residentId ?? pickup.userId,
     userName: pickup.residentName ?? (pickup.residentId === session?.userId ? session?.name : null) ?? 'Resident',
     deliveryPartnerId: pickup.deliveryPartnerId ? (session?.role === 'delivery' ? session.userId : pickup.deliveryPartnerId) : null,
-    deliveryPartnerName: pickup.deliveryPartnerId ? (session?.role === 'delivery' ? session.name : 'Assigned delivery partner') : null,
+    deliveryPartnerName: pickup.deliveryPartnerId ? (partnerName || (session?.role === 'delivery' ? session.name : 'Assigned delivery partner')) : null,
     timeline: pickup.timeline || [],
   }
 }

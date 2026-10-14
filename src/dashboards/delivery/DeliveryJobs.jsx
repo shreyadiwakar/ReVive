@@ -110,24 +110,30 @@ export default function DeliveryJobs() {
           </div>
         ) : (
           <div className="mt-3 grid gap-4">
-            {activePageItems.map((p) => (
-              <div key={p.id} className="rounded-2xl bg-white p-5 shadow-sm border border-emerald-100/70">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-mono text-xs text-charcoal/40">{p.id}</p>
-                    <p className="mt-1 font-semibold text-charcoal">{p.wasteCategory} · {formatKg(p.quantityKg)}</p>
-                    <p className="mt-2 flex items-start gap-1.5 text-sm text-charcoal/70"><MapPin size={16} className="mt-0.5 shrink-0 text-forest" /><span><span className="font-semibold text-charcoal">Pickup from:</span> {p.pickupAddress}</span></p>
-                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.pickupAddress)}`} target="_blank" rel="noreferrer" className="ml-5 mt-1 inline-block text-sm font-semibold text-forest hover:underline">Open directions</a>
-                    <p className="mt-1 text-sm text-charcoal/50">{formatDate(p.scheduledAt)} → {p.centerName}</p>
-                    <DistanceSummary distances={routeDistance(p)} fallbackFromBase={distanceFromBase(p)} />
+            {activePageItems.map((p) => {
+              const center = db.centers.find((item) => item.id === p.centerId)
+              const dropAddress = [center?.address, center?.city].filter(Boolean).join(', ') || center?.name || p.centerName
+              return (
+                <div key={p.id} className="rounded-2xl bg-white p-5 shadow-sm border border-emerald-100/70">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-xs text-charcoal/40">{p.id}</p>
+                      <p className="mt-1 font-semibold text-charcoal">{p.wasteCategory} · {formatKg(p.quantityKg)}</p>
+                      <p className="mt-2 flex items-start gap-1.5 text-sm text-charcoal/70"><MapPin size={16} className="mt-0.5 shrink-0 text-forest" /><span><span className="font-semibold text-charcoal">Pickup from:</span> {p.pickupAddress}</span></p>
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.pickupAddress)}`} target="_blank" rel="noreferrer" className="ml-5 mt-1 inline-block text-sm font-semibold text-forest hover:underline">Open directions</a>
+                      <p className="mt-2 flex items-start gap-1.5 text-sm text-charcoal/70"><MapPin size={16} className="mt-0.5 shrink-0 text-amber-600" /><span><span className="font-semibold text-charcoal">Drop to:</span> {dropAddress}</span></p>
+                      {dropAddress && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dropAddress)}`} target="_blank" rel="noreferrer" className="ml-5 mt-1 inline-block text-sm font-semibold text-forest hover:underline">Open drop-off location</a>}
+                      <p className="mt-1 text-sm text-charcoal/50">{formatDate(p.scheduledAt)} → {p.centerName}</p>
+                      <DistanceSummary distances={routeDistance(p)} fallbackFromBase={distanceFromBase(p)} />
+                    </div>
+                    <StatusBadge status={p.status} />
                   </div>
-                  <StatusBadge status={p.status} />
+                  <Link to={`/delivery/jobs/${p.id}`} className="mt-4 inline-block rounded-lg border border-emerald-200 px-3.5 py-1.5 text-sm font-semibold text-charcoal hover:bg-mint-light">
+                    Manage job
+                  </Link>
                 </div>
-                <Link to={`/delivery/jobs/${p.id}`} className="mt-4 inline-block rounded-lg border border-emerald-200 px-3.5 py-1.5 text-sm font-semibold text-charcoal hover:bg-mint-light">
-                  Manage job
-                </Link>
-              </div>
-            ))}
+              )
+            })}
             <Pagination page={Math.min(activePage, activePages)} totalPages={activePages} onChange={setActivePage} />
           </div>
         )}
@@ -141,29 +147,35 @@ export default function DeliveryJobs() {
           </div>
         ) : (
           <div className="mt-3 grid gap-4">
-            {availablePageItems.map((p) => (
-              <div key={p.id} className="rounded-2xl bg-white p-5 shadow-sm border border-emerald-100/70">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-mono text-xs text-charcoal/40">{p.id}</p>
-                    <p className="mt-1 font-semibold text-charcoal">{p.wasteCategory} · {formatKg(p.quantityKg)}</p>
-                    <p className="mt-2 flex items-start gap-1.5 text-sm text-charcoal/70"><MapPin size={16} className="mt-0.5 shrink-0 text-forest" /><span><span className="font-semibold text-charcoal">Pickup from:</span> {p.pickupAddress}</span></p>
-                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.pickupAddress)}`} target="_blank" rel="noreferrer" className="ml-5 mt-1 inline-block text-sm font-semibold text-forest hover:underline">Preview location</a>
-                    <p className="mt-1 text-sm text-charcoal/50">{formatDate(p.scheduledAt)} → {p.centerName}</p>
-                    <DistanceSummary distances={routeDistance(p)} fallbackFromBase={distanceFromBase(p)} />
+            {availablePageItems.map((p) => {
+              const center = db.centers.find((item) => item.id === p.centerId)
+              const dropAddress = [center?.address, center?.city].filter(Boolean).join(', ') || center?.name || p.centerName
+              return (
+                <div key={p.id} className="rounded-2xl bg-white p-5 shadow-sm border border-emerald-100/70">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-xs text-charcoal/40">{p.id}</p>
+                      <p className="mt-1 font-semibold text-charcoal">{p.wasteCategory} · {formatKg(p.quantityKg)}</p>
+                      <p className="mt-2 flex items-start gap-1.5 text-sm text-charcoal/70"><MapPin size={16} className="mt-0.5 shrink-0 text-forest" /><span><span className="font-semibold text-charcoal">Pickup from:</span> {p.pickupAddress}</span></p>
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.pickupAddress)}`} target="_blank" rel="noreferrer" className="ml-5 mt-1 inline-block text-sm font-semibold text-forest hover:underline">Preview location</a>
+                      <p className="mt-2 flex items-start gap-1.5 text-sm text-charcoal/70"><MapPin size={16} className="mt-0.5 shrink-0 text-amber-600" /><span><span className="font-semibold text-charcoal">Drop to:</span> {dropAddress}</span></p>
+                      {dropAddress && <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dropAddress)}`} target="_blank" rel="noreferrer" className="ml-5 mt-1 inline-block text-sm font-semibold text-forest hover:underline">Open drop-off location</a>}
+                      <p className="mt-1 text-sm text-charcoal/50">{formatDate(p.scheduledAt)} → {p.centerName}</p>
+                      <DistanceSummary distances={routeDistance(p)} fallbackFromBase={distanceFromBase(p)} />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAcceptTarget(p)}
+                      disabled={busy || !vehicleLimit || Number(p.quantityKg) > vehicleLimit}
+                      className="rounded-lg bg-forest px-4 py-2 text-sm font-semibold text-white hover:bg-forest-dark transition"
+                    >
+                      Accept
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setAcceptTarget(p)}
-                    disabled={busy || !vehicleLimit || Number(p.quantityKg) > vehicleLimit}
-                    className="rounded-lg bg-forest px-4 py-2 text-sm font-semibold text-white hover:bg-forest-dark transition"
-                  >
-                    Accept
-                  </button>
+                  {vehicleLimit && Number(p.quantityKg) > vehicleLimit && <p className="mt-3 text-sm text-amber-800">This pickup is over your vehicle's {vehicleLimit} kg capacity.</p>}
                 </div>
-                {vehicleLimit && Number(p.quantityKg) > vehicleLimit && <p className="mt-3 text-sm text-amber-800">This pickup is over your vehicle's {vehicleLimit} kg capacity.</p>}
-              </div>
-            ))}
+              )
+            })}
             <Pagination page={Math.min(availablePage, availablePages)} totalPages={availablePages} onChange={setAvailablePage} />
           </div>
         )}

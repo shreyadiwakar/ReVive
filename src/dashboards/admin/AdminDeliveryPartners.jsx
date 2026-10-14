@@ -3,6 +3,7 @@ import { useState } from 'react'
 import ApprovalBadge from '../../components/ApprovalBadge'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
+import Modal from '../../components/Modal'
 import Pagination from '../../components/Pagination'
 import { useAppData } from '../../context/AppDataContext'
 import { useToast } from '../../context/ToastContext'
@@ -16,6 +17,7 @@ export default function AdminDeliveryPartners() {
   const toast = useToast()
   const [action, setAction] = useState(null)
   const [page, setPage] = useState(1)
+  const [viewing, setViewing] = useState(null)
 
   const partners = db.users
     .filter((u) => u.role === ROLES.DELIVERY)
@@ -72,6 +74,9 @@ export default function AdminDeliveryPartners() {
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
+                <button type="button" onClick={() => setViewing(p)} className="rounded-lg border border-emerald-200 px-3.5 py-1.5 text-sm font-semibold text-charcoal hover:bg-mint-light">
+                  View
+                </button>
                 {p.approvalStatus === APPROVAL_STATUS.PENDING && (
                   <>
                     <button type="button" onClick={() => setAction({ type: 'approve', user: p })} className="rounded-lg bg-forest px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-forest-dark">
@@ -100,6 +105,36 @@ export default function AdminDeliveryPartners() {
         </div>
       )}
 
+      <Modal open={!!viewing} title={viewing?.name} onClose={() => setViewing(null)}>
+        {viewing && (
+          <div className="space-y-4 text-sm">
+            <div className="rounded-xl bg-mint-light p-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-charcoal/50">Delivery partner profile</p>
+              <div className="mt-3 space-y-2">
+                <Row label="Email" value={viewing.email || '—'} />
+                <Row label="Phone" value={viewing.phone || '—'} />
+                <Row label="Role" value="Delivery partner" />
+                <Row label="Status" value={viewing.status || '—'} />
+                <Row label="Approval" value={viewing.approvalStatus || '—'} />
+                <Row label="Joined" value={formatDate(viewing.createdAt)} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Row label="Address" value={viewing.address || '—'} />
+              <Row label="City" value={viewing.city || '—'} />
+              <Row label="Service area" value={viewing.serviceArea || '—'} />
+              <Row label="Vehicle type" value={viewing.vehicleType || '—'} />
+              <Row label="Vehicle reg." value={viewing.vehicleReg || '—'} />
+              <Row label="Identity verified" value={viewing.identityVerified ? 'Yes' : 'No'} />
+              {viewing.latitude != null && viewing.longitude != null && (
+                <Row label="Location" value={`${Number(viewing.latitude).toFixed(5)}, ${Number(viewing.longitude).toFixed(5)}`} />
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+
       <ConfirmDialog
         open={!!action}
         title={`${action?.type?.charAt(0).toUpperCase()}${action?.type?.slice(1)} this partner?`}
@@ -109,6 +144,15 @@ export default function AdminDeliveryPartners() {
         onConfirm={runAction}
         onCancel={() => setAction(null)}
       />
+    </div>
+  )
+}
+
+function Row({ label, value }) {
+  return (
+    <div className="flex justify-between border-b border-emerald-50 pb-2">
+      <span className="text-charcoal/50">{label}</span>
+      <span className="font-medium text-charcoal">{value}</span>
     </div>
   )
 }

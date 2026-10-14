@@ -679,6 +679,41 @@ function publicPickup(item: Record<string, unknown>) {
   return pickup
 }
 
+async function hydrateDeliveryPartnerNames<T extends Record<string, unknown>>(items: T[]) {
+  const partnerIds = [...new Set(items
+    .filter((item) => typeof item.deliveryPartnerId === 'string')
+    .map((item) => String(item.deliveryPartnerId)))]
+
+  if (partnerIds.length === 0) return items
+
+  const profiles = await Promise.all(partnerIds.map(async (id) => {
+    const result = await dynamo.send(new GetCommand({
+      TableName: requireTable(),
+      Key: { PK: `ACCOUNT#${id}`, SK: 'PROFILE' },
+      ProjectionExpression: 'name',
+    }))
+    return { id, name: typeof result.Item?.name === 'string' ? result.Item.name : '' }
+  }))
+
+  const partnerNames = new Map(profiles.map((profile) => [profile.id, profile.name]))
+  return items.map((item) => {
+    if (typeof item.deliveryPartnerId !== 'string') return item
+
+    const existingName = typeof item.deliveryPartnerName === 'string' && item.deliveryPartnerName.trim()
+      ? item.deliveryPartnerName
+      : typeof item.partnerName === 'string' && item.partnerName.trim()
+        ? item.partnerName
+        : typeof item.assignedPartnerName === 'string' && item.assignedPartnerName.trim()
+          ? item.assignedPartnerName
+          : null
+
+    if (existingName) return { ...item, deliveryPartnerName: existingName }
+
+    const partnerName = partnerNames.get(item.deliveryPartnerId)
+    return { ...item, deliveryPartnerName: partnerName || 'Assigned delivery partner' }
+  })
+}
+
 function requireSubject(event: Parameters<APIGatewayProxyHandlerV2>[0]) {
   return authenticatedSubject(event)
 }
@@ -697,7 +732,7 @@ async function listPickups(event: Parameters<APIGatewayProxyHandlerV2>[0], subje
     Limit: limit,
     ScanIndexForward: false,
   }))
-  const items = (result.Items ?? []).map(publicPickup)
+  const items = await hydrateDeliveryPartnerNames((result.Items ?? []).map(publicPickup))
   return json(200, { items })
 }
 
@@ -715,7 +750,8 @@ async function listPartnerPickups(subject: string, available: boolean, event: Pa
     Limit: limit,
     ScanIndexForward: available,
   }))
-  return json(200, { items: (result.Items ?? []).map(publicPickup) })
+  const items = await hydrateDeliveryPartnerNames((result.Items ?? []).map(publicPickup))
+  return json(200, { items })
 }
 
 async function getRewards(subject: string, event: Parameters<APIGatewayProxyHandlerV2>[0]) {
@@ -959,7 +995,8 @@ async function listCenterPickups(ownerSub: string) {
     ExpressionAttributeValues: { ':center': `CENTER#${center.id}` },
     ScanIndexForward: true,
   }))
-  return json(200, { items: (result.Items ?? []).map(publicPickup) })
+  const items = await hydrateDeliveryPartnerNames((result.Items ?? []).map(publicPickup))
+  return json(200, { items })
 }
 
 async function getAdminSnapshot() {
@@ -1416,7 +1453,7 @@ async function getPickup(event: Parameters<APIGatewayProxyHandlerV2>[0], subject
     ExpressionAttributeValues: { ':pickup': `PICKUP#${id}`, ':event': 'EVENT#' },
     ScanIndexForward: true,
   }))
-  const pickup = publicPickup(item)
+  const pickup = (await hydrateDeliveryPartnerNames([publicPickup(item)]))[0]
   if (isAssignedDeliveryPartner && typeof item.residentId === 'string') {
     const resident = await dynamo.send(new GetCommand({
       TableName: requireTable(),

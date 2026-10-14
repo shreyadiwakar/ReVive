@@ -3,6 +3,7 @@ import { useState } from 'react'
 import ApprovalBadge from '../../components/ApprovalBadge'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import EmptyState from '../../components/EmptyState'
+import Modal from '../../components/Modal'
 import Pagination from '../../components/Pagination'
 import { useAppData } from '../../context/AppDataContext'
 import { useToast } from '../../context/ToastContext'
@@ -16,6 +17,7 @@ export default function AdminCenters() {
   const toast = useToast()
   const [action, setAction] = useState(null)
   const [page, setPage] = useState(1)
+  const [viewing, setViewing] = useState(null)
 
   const centers = db.users
     .filter((u) => u.role === ROLES.CENTER)
@@ -72,6 +74,9 @@ export default function AdminCenters() {
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
+                <button type="button" onClick={() => setViewing(c)} className="rounded-lg border border-emerald-200 px-3.5 py-1.5 text-sm font-semibold text-charcoal hover:bg-mint-light">
+                  View
+                </button>
                 {c.approvalStatus === APPROVAL_STATUS.PENDING && (
                   <>
                     <button type="button" onClick={() => setAction({ type: 'approve', user: c })} className="rounded-lg bg-forest px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-forest-dark">
@@ -100,6 +105,37 @@ export default function AdminCenters() {
         </div>
       )}
 
+      <Modal open={!!viewing} title={viewing?.name} onClose={() => setViewing(null)}>
+        {viewing && (
+          <div className="space-y-4 text-sm">
+            <div className="rounded-xl bg-mint-light p-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-charcoal/50">Center profile</p>
+              <div className="mt-3 space-y-2">
+                <Row label="Email" value={viewing.email || '—'} />
+                <Row label="Contact person" value={viewing.contactPerson || '—'} />
+                <Row label="Role" value="Recycling center" />
+                <Row label="Status" value={viewing.status || '—'} />
+                <Row label="Approval" value={viewing.approvalStatus || '—'} />
+                <Row label="Joined" value={formatDate(viewing.createdAt)} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Row label="Address" value={viewing.address || '—'} />
+              <Row label="City" value={viewing.city || '—'} />
+              <Row label="Accepted categories" value={Array.isArray(viewing.acceptedCategories) ? viewing.acceptedCategories.join(', ') : viewing.acceptedCategories || '—'} />
+              <Row label="Operating hours" value={viewing.operatingHours || '—'} />
+              <Row label="Business verified" value={viewing.businessVerified ? 'Yes' : 'No'} />
+              <Row label="Center ID" value={viewing.centerId || '—'} />
+              {viewing.latitude != null && viewing.longitude != null && (
+                <Row label="Location" value={`${Number(viewing.latitude).toFixed(5)}, ${Number(viewing.longitude).toFixed(5)}`} />
+              )}
+              <Row label="Description" value={viewing.description || '—'} />
+            </div>
+          </div>
+        )}
+      </Modal>
+
       <ConfirmDialog
         open={!!action}
         title={`${action?.type?.charAt(0).toUpperCase()}${action?.type?.slice(1)} this center?`}
@@ -109,6 +145,15 @@ export default function AdminCenters() {
         onConfirm={runAction}
         onCancel={() => setAction(null)}
       />
+    </div>
+  )
+}
+
+function Row({ label, value }) {
+  return (
+    <div className="flex justify-between border-b border-emerald-50 pb-2">
+      <span className="text-charcoal/50">{label}</span>
+      <span className="font-medium text-charcoal">{value}</span>
     </div>
   )
 }

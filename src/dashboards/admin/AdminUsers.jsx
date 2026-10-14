@@ -130,14 +130,46 @@ export default function AdminUsers() {
 
       <Modal open={!!viewing} title={viewing?.name} onClose={() => setViewing(null)}>
         {viewing && (
-          <div className="space-y-2 text-sm">
-            <Row label="Email" value={viewing.email} />
-            <Row label="Role" value={getRoleLabel(viewing.role)} />
-            <Row label="Phone" value={viewing.phone || '—'} />
-            <Row label="City" value={viewing.city || '—'} />
-            <Row label="Joined" value={formatDate(viewing.createdAt)} />
-            {viewing.role === ROLES.USER && <Row label="Points" value={Number(viewing.points ?? 0).toLocaleString()} />}
-            {viewing.approvalStatus && <Row label="Approval" value={viewing.approvalStatus} />}
+          <div className="space-y-4 text-sm">
+            <div className="rounded-xl bg-mint-light p-3">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-charcoal/50">Account overview</p>
+              <div className="mt-3 space-y-2">
+                <Row label="Email" value={viewing.email || '—'} />
+                <Row label="Role" value={getRoleLabel(viewing.role)} />
+                <Row label="Status" value={viewing.status || '—'} />
+                <Row label="Approval" value={viewing.approvalStatus || '—'} />
+                <Row label="Joined" value={formatDate(viewing.createdAt)} />
+                {viewing.role === ROLES.USER && <Row label="Points" value={Number(viewing.points ?? 0).toLocaleString()} />}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Row label="Phone" value={viewing.phone || '—'} />
+              <Row label="Address" value={viewing.address || '—'} />
+              <Row label="City" value={viewing.city || '—'} />
+              {viewing.latitude != null && viewing.longitude != null && (
+                <Row label="Location" value={`${Number(viewing.latitude).toFixed(5)}, ${Number(viewing.longitude).toFixed(5)}`} />
+              )}
+              {viewing.role === ROLES.DELIVERY && (
+                <>
+                  <Row label="Service area" value={viewing.serviceArea || '—'} />
+                  <Row label="Vehicle type" value={viewing.vehicleType || '—'} />
+                  <Row label="Vehicle reg." value={viewing.vehicleReg || '—'} />
+                  <Row label="Identity verified" value={viewing.identityVerified ? 'Yes' : 'No'} />
+                </>
+              )}
+              {viewing.role === ROLES.CENTER && (
+                <>
+                  <Row label="Center ID" value={viewing.centerId || '—'} />
+                  <Row label="Contact person" value={viewing.contactPerson || '—'} />
+                  <Row label="Accepted categories" value={Array.isArray(viewing.acceptedCategories) ? viewing.acceptedCategories.join(', ') : viewing.acceptedCategories || '—'} />
+                  <Row label="Operating hours" value={viewing.operatingHours || '—'} />
+                  <Row label="Business verified" value={viewing.businessVerified ? 'Yes' : 'No'} />
+                  <Row label="Description" value={viewing.description || '—'} />
+                </>
+              )}
+              {viewing.role === ROLES.ADMIN && <Row label="Admin access" value="System administrator" />}
+            </div>
           </div>
         )}
       </Modal>
