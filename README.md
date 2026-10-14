@@ -1,66 +1,71 @@
 # ReVive
 
-**Turn waste into worth.** ReVive helps households recycle more consistently by connecting residents, delivery partners, recycling centers, and platform administrators in one traceable workflow. This means waste is easier to collect, routes are more organized, and verified recycling activity can turn into visible rewards instead of lost material or missed pickups.
+**Turn waste into worth.** ReVive connects residents, delivery partners, recycling centers, and administrators in a recycling pickup workflow. Residents schedule pickups, partners collect and deliver recyclable material, centers verify received weight, and the system records points and coupon redemptions.
 
-Residents schedule and track pickups, compare eligible recycling centers, and receive points after recycling is verified. Delivery partners accept jobs, update collection and delivery status, and review estimated earnings. Recycling centers confirm received weights and verify materials. Administrators oversee accounts, applications, pickup activity, reward rates, and the coupon catalog.
+## What you can do
 
-## Product capabilities
+- **Residents:** use the map to find recycling centers, schedule and track pickups, manage a profile, submit complaints, earn points after center verification, and redeem coupons from the catalog.
+- **Delivery partners:** review available pickups, accept jobs, update collection and delivery status, view routes, and see earnings estimates.
+- **Recycling centers:** manage center details, review assigned pickups, record received weight, and verify recycling.
+- **Administrators:** view platform activity and charts, review accounts and partner applications, approve or suspend accounts, manage pickups and complaints, and configure points and coupons.
 
-- Role-specific workspaces for residents, delivery partners, recycling centers, and administrators.
-- Pickup scheduling and status tracking from request through center verification.
-- Map-based address selection and center recommendations using saved map pins. Leaflet and OpenStreetMap provide the map; Mapbox supports address lookup when configured. Road distances use OSRM driving routes when available.
-- Reward points credited from the recycling center’s verified weight and category rate. The ledger prevents awarding points twice for the same pickup.
-- Coupon catalog management for administrators. Residents can redeem points, and each redemption is recorded with the updated balance. Voucher fulfillment and cash transfers are not connected.
-- Delivery earnings estimates based on verified pickups, route distance, verified weight, and configured bonuses. The application does not transfer payments.
-- Local persistence through DynamoDB Local for the connected workflows. Some screens also support a browser-storage preview mode; that data remains in the current browser and is separate from the backend database.
+ReVive has four role-specific account types: resident, delivery partner, recycling center, and administrator. Residents, delivery partners, and centers use email and password to register and sign in; administrators are provisioned by a trusted operator. AWS mode uses Amazon Cognito for email confirmation, sign-in, password recovery, and access tokens. The Vercel/Supabase mode uses Supabase Auth for account authentication. Local development uses its own localhost-only authentication flow.
+
+Maps support center discovery and location-aware pickup coordination. Pickup status and timeline make progress visible across the resident, delivery, center, and admin workflows. Dashboard charts summarize available platform and activity data. Points are recorded after the center verifies received weight, and coupon redemptions update the points balance and redemption history through the configured backend.
+
+## Why ReVive matters
+
+Recyclable material is more likely to be recovered when people have a convenient way to hand it over and can see what happens next. ReVive brings the handoff, collection, center verification, and resident reward record into one workflow. That can make recycling easier to act on and easier for participating organizations to coordinate.
+
+The intended real-world benefits are:
+
+- **More convenient recycling:** residents can request a pickup and find a center that accepts the material.
+- **Clearer accountability:** pickup status and timeline show progress from request through delivery and center verification.
+- **Verified records:** centers record received weight; points are calculated from that verified amount, creating a record of material handled.
+- **Better coordination:** delivery partners can find and claim available jobs, while centers and administrators manage their parts of the process.
+- **A reason to participate:** points and a coupon catalog give residents a visible reward for verified recycling.
+
+These are the outcomes ReVive is designed to support. Actual environmental impact depends on real pickups, material being properly processed, and participation by local residents, delivery partners, and centers. The app does not independently verify that material is recycled after center intake or calculate emissions avoided.
 
 ## Technology
 
-| Area | Tools |
+| Area | Technology |
 |---|---|
-| Frontend | React 19, Vite, React Router, Tailwind CSS 4 |
-| Maps and charts | Leaflet, React Leaflet, OpenStreetMap, Mapbox geocoding, OSRM routing, Recharts |
-| Backend | Node.js, TypeScript, AWS SDK for JavaScript |
-| Local data | DynamoDB Local and a local HTTP API runner |
-| AWS architecture | AWS SAM, API Gateway HTTP API, Lambda, DynamoDB, Cognito |
+| Frontend | React, Vite, React Router, Tailwind CSS |
+| Maps and charts | Leaflet, OpenStreetMap, optional Mapbox address lookup, OSRM routing, Recharts |
+| Local backend | Node.js, TypeScript, AWS SDK, DynamoDB Local |
+| AWS backend | AWS SAM, API Gateway HTTP API, Lambda, DynamoDB, Cognito |
+| Alternate hosted backend | Vercel Functions and Supabase |
 
-## Deploy the complete app without AWS
+The root `api/` and `supabase/` folders provide the Vercel/Supabase option. The `backend/` folder contains the AWS SAM API and local DynamoDB development tools. These are separate backend options; choose one API mode for a frontend deployment.
 
-The Vercel deployment uses Vercel for the Vite frontend and API functions, and
-Supabase for shared data and authentication. Follow
-[`docs/vercel-deployment.md`](docs/vercel-deployment.md) to create the database,
-configure environment variables, and provision the first administrator. The
-Supabase service-role key must stay in Vercel's server-only environment and
-must never use a `VITE_` prefix.
+## Run locally
 
-For the AWS SAM backend plus Vercel frontend architecture, see
-[`docs/aws-vercel-full-stack-deployment.md`](docs/aws-vercel-full-stack-deployment.md).
-That guide also lists the AWS authentication and route integration work needed
-before the current frontend can use the deployed AWS API.
+### Requirements
 
-## Run locally on Windows
+- Node.js 20.19+ or 22.12+
+- npm
+- Docker Desktop, for the local DynamoDB backend
+- PowerShell on Windows (commands below use PowerShell syntax)
 
-Requirements: Node.js with npm, Docker Desktop, and PowerShell.
+### 1. Configure and install the frontend
 
-### 1. Configure the frontend
-
-From the repository root, create `.env.local` from the example only if you do not already have one. This preserves any existing Mapbox key or local settings.
+From the repository root:
 
 ```powershell
-cd C:\Users\HP\Desktop\ReVive
 if (!(Test-Path .env.local)) { Copy-Item .env.example .env.local }
-npm install
+npm ci
 ```
 
-The default configuration points the frontend at the local API on port `3001`. To enable address search, set `VITE_MAPBOX_ACCESS_TOKEN` in `.env.local`. Map pins can still be placed manually without a Mapbox key.
+The example selects the local API at `http://127.0.0.1:3001`. To use address search, set `VITE_MAPBOX_ACCESS_TOKEN` in `.env.local`; map pins can be placed manually without it. Keep `.env.local` private and do not commit credentials.
 
-### 2. Start the local database and API
+### 2. Start DynamoDB Local and the API
 
-In a separate PowerShell terminal:
+In a second terminal:
 
 ```powershell
-cd C:\Users\HP\Desktop\ReVive\backend
-npm install
+cd backend
+npm ci
 docker compose up -d
 npm run local:db:init
 npm run local:db:check
@@ -68,50 +73,69 @@ npm run local:admin:create
 npm run local:api
 ```
 
-Create an administrator when prompted. The password input is hidden. The local API listens at `http://127.0.0.1:3001` and uses development-only role headers; keep it on localhost and do not expose it publicly.
+Create the local administrator when prompted. The API listens on `http://127.0.0.1:3001`; DynamoDB Local listens on port `8000`. The local API uses development-only role headers and bypasses Cognito. Keep it on localhost and never expose it publicly.
 
-### 3. Start the frontend
+### 3. Start the Vite frontend
 
-In another terminal:
+In another terminal, from the repository root:
 
 ```powershell
-cd C:\Users\HP\Desktop\ReVive
 npm run dev
 ```
 
-Open the Vite address printed in the terminal, usually `http://localhost:5173`. Register resident, delivery partner, and recycling center accounts through the website. Use the administrator account created above to approve delivery partners and centers.
+Open the URL Vite prints, usually `http://localhost:5173`. Register resident, delivery-partner, and recycling-center accounts in the app. Use the local administrator to approve partner applications. Then run a pickup through partner collection, center verification, and resident rewards.
 
-The local database runs in memory. Its records are lost when the DynamoDB Local container is removed with `docker compose down`; avoid that command while you need the current local data.
+DynamoDB Local is configured in memory. Its records are lost when its container is removed. Avoid `docker compose down` if you want to keep the current local data.
 
-## Pickup and rewards workflow
+## Useful commands
 
-1. A resident schedules a pickup and selects an eligible recycling center.
-2. An approved delivery partner accepts the job and marks it collected and delivered.
-3. The center records the received weight and verifies the recycling.
-4. ReVive credits resident points and records the reward transaction only after verification.
-5. The resident can redeem an active coupon if their points balance covers its cost. Redemption deducts points and creates a ledger entry; fulfillment is not yet integrated.
-
-Administrators can approve accounts, manage coupon listings, update reward rates, and review pickup and reward activity.
-
-## Useful local commands
-
-Run these from `backend/`:
+Run frontend commands from the repository root:
 
 ```powershell
-npm run local:db:check       # Check the local table schema
-npm run local:users:list     # List local account profiles without password hashes
-npm run local:smoke          # Exercise the local pickup-to-reward API workflow
+npm run dev
+npm run build
+npm run lint
 ```
 
-The smoke workflow creates test records in DynamoDB Local. Since the database is in memory, stopping/removing the database clears those records along with other local data.
+Run backend commands from `backend/`:
 
-## Architecture and deployment status
+```powershell
+npm run build
+npm run typecheck
+npm run local:db:check
+npm run local:smoke
+npm run local:cleanup-smoke
+```
 
-The backend is structured for AWS Lambda and API Gateway, and [`backend/template.yaml`](backend/template.yaml) describes the planned API Gateway HTTP API, Lambda, Cognito, and DynamoDB resources. DynamoDB Local and the standalone API runner are used for local development; local commands do not create AWS resources.
+The smoke test exercises the local API and cleans up its uniquely named test records. `local:cleanup-smoke` can clean up records left by an interrupted run. These commands require the local DynamoDB and API where noted; they do not deploy AWS resources.
 
-**The application has not been deployed to AWS.** The SAM template is a deployment starting point, not confirmation of a production-ready stack. Before staging, align all frontend API calls with deployed routes and IAM policies, complete Cognito role and administrator provisioning, configure production origins and secrets, and verify authentication and authorization end to end. Production authentication has not been changed by the local setup.
+## Configure an API mode
 
-The frontend can be built with `npm run build`; the output is written to `dist/`. Hosting options such as Amazon S3 with CloudFront or Amplify can be configured when preparing a staging environment.
+The frontend reads `VITE_API_MODE` and `VITE_API_BASE_URL` at build time. Restart Vite after changing `.env.local`, and rebuild/redeploy a hosted frontend after changing its environment variables.
+
+| Mode | Purpose | Configuration |
+|---|---|---|
+| `local` | Local API and DynamoDB Local | `.env.example` defaults to `http://127.0.0.1:3001` |
+| `vercel` | Vercel API functions with Supabase | Follow [`docs/vercel-deployment.md`](docs/vercel-deployment.md) for environment variables and setup |
+| `aws` | AWS API Gateway and Cognito | Set the deployed API URL; see [`docs/aws-frontend.env.example`](docs/aws-frontend.env.example) and [`docs/aws-vercel-full-stack-deployment.md`](docs/aws-vercel-full-stack-deployment.md) |
+
+Only `VITE_*` values are suitable for the browser bundle. Never put AWS credentials or the Supabase service-role key in a `VITE_*` variable. Do not expose the local API to the public internet.
+
+## Deployment guides
+
+- **Vercel + Supabase:** [`docs/vercel-deployment.md`](docs/vercel-deployment.md) covers the frontend, API functions, database setup, environment variables, and first administrator.
+- **AWS SAM backend + Vercel frontend:** [`docs/aws-vercel-full-stack-deployment.md`](docs/aws-vercel-full-stack-deployment.md) covers the AWS stack and connecting the frontend.
+- **AWS Amplify frontend:** The root [`amplify.yml`](amplify.yml) builds the Vite app from the repository root. The backend remains a separately managed AWS SAM deployment.
+
+The SAM template defines an API Gateway HTTP API, one Lambda function, a Cognito user pool/client and role groups, and a DynamoDB table with three GSIs. AWS deployment and billing are separate from hosting the static frontend; review the deployment guide and the CloudFormation change set before creating or updating resources. The DynamoDB table has deletion protection and retention settings.
+
+## Security and operational notes
+
+- AWS API requests use Cognito access tokens; backend role checks also enforce account status and resource ownership.
+- The first AWS administrator must be provisioned by a trusted operator. Ordinary signup does not grant admin membership. Follow the first-admin instructions in the AWS deployment guide.
+- Local development authentication is intentionally different from AWS authentication and is only for localhost.
+- Recycling-center evidence uploads to S3 are not implemented.
+- The app uses an external OSRM demo routing endpoint by default. Mapbox address lookup is optional and requires a token.
 
 ## Repository layout
 
